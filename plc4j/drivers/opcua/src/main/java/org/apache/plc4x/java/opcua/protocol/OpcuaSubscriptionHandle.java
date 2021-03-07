@@ -37,11 +37,14 @@ import org.apache.plc4x.java.spi.messages.utils.ResponseItem;
 import org.apache.plc4x.java.spi.model.DefaultPlcConsumerRegistration;
 import org.apache.plc4x.java.spi.model.DefaultPlcSubscriptionHandle;
 import org.apache.plc4x.java.spi.transaction.RequestTransactionManager;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.time.Instant;
 import java.util.*;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.Consumer;
 
@@ -49,23 +52,27 @@ import java.util.function.Consumer;
  */
 public class OpcuaSubscriptionHandle extends DefaultPlcSubscriptionHandle {
 
+    private static final Logger LOGGER = LoggerFactory.getLogger(OpcuaSubscriptionHandle.class);
+
     private Set<Consumer<PlcSubscriptionEvent>> consumers = new HashSet<>();
     private OpcuaField field;
     private long clientHandle;
-    CompletableFuture<PlcSubscriptionResponse> future = null;
+
     private AtomicBoolean destroy = new AtomicBoolean(false);
     private OpcuaProtocolLogic plcSubscriber;
     private Long subscriptionId;
+    private long cycleTime;
 
     /**
      * @param field    corresponding map key in the PLC4X request/reply map
      *
      */
-    public OpcuaSubscriptionHandle(OpcuaProtocolLogic plcSubscriber, Long subscriptionId, OpcuaField field) {
+    public OpcuaSubscriptionHandle(OpcuaProtocolLogic plcSubscriber, Long subscriptionId, OpcuaField field, long cycleTime) {
         super(plcSubscriber);
         this.field = field;
         this.subscriptionId = subscriptionId;
-        startSubscriber();
+        this.plcSubscriber = plcSubscriber;
+        this.cycleTime = cycleTime;
     }
 
     /**
@@ -74,81 +81,105 @@ public class OpcuaSubscriptionHandle extends DefaultPlcSubscriptionHandle {
      */
     public void startSubscriber() {
         CompletableFuture.supplyAsync(() -> {
-            LinkedList<Long> outstandingAcknowledgements = new LinkedList<>();
-            while (!this.destroy.get()) {
-                int requestHandle = this.plcSubscriber.getRequestHandle();
+            try {
+                RequestTransactionManager tm = new RequestTransactionManager(1);
+                LinkedList<Long> outstandingAcknowledgements = new LinkedList<>();
+                LinkedList<Long> outstandingRequests = new LinkedList<>();
+                AtomicInteger sequenceNumber = new AtomicInteger(1);
+                while (!this.destroy.get()) {
+                    LOGGER.info("SubscriberLoop");
+                    try {
+                        Thread.sleep(this.cycleTime);
+                    } catch (InterruptedException e) {
+                        LOGGER.info("Interrupted Exception");
+                    }
 
-                RequestHeader requestHeader = new RequestHeader(this.plcSubscriber.getAuthenticationToken(),
-                    OpcuaProtocolLogic.getCurrentDateTime(),
-                    requestHandle,
-                    0L,
-                    OpcuaProtocolLogic.NULL_STRING,
-                    OpcuaProtocolLogic.REQUEST_TIMEOUT_LONG,
-                    OpcuaProtocolLogic.NULL_EXTENSION_OBJECT);
+                    int requestHandle = sequenceNumber.getAndIncrement();
 
-                SubscriptionAcknowledgement[] acks = null;
-                int ackLength = outstandingAcknowledgements.size();
-                if (outstandingAcknowledgements.size() > 0) {
-                    acks = new SubscriptionAcknowledgement[outstandingAcknowledgements.size()];
-                    for (int i = 0; i < outstandingAcknowledgements.size(); i++) {
-                        acks[i] = new SubscriptionAcknowledgement(this.subscriptionId, outstandingAcknowledgements.remove())
+                    RequestHeader requestHeader = new RequestHeader(this.plcSubscriber.getAuthenticationToken(),
+                        OpcuaProtocolLogic.getCurrentDateTime(),
+                        requestHandle,
+                        0L,
+                        OpcuaProtocolLogic.NULL_STRING,
+                        OpcuaProtocolLogic.REQUEST_TIMEOUT_LONG,
+                        OpcuaProtocolLogic.NULL_EXTENSION_OBJECT);
+
+                    SubscriptionAcknowledgement[] acks = null;
+                    int ackLength = -1;
+                    LOGGER.info("-------------Oustanding Size1: - {}", outstandingAcknowledgements.size());
+                    if (outstandingAcknowledgements.size() > 0) {
+                        LOGGER.info("-------------Oustanding Size: - {}", outstandingAcknowledgements.size());
+                        acks = new SubscriptionAcknowledgement[outstandingAcknowledgements.size()];
+                        ackLength = outstandingAcknowledgements.size();
+                        for (int i = 0; i < outstandingAcknowledgements.size(); i++) {
+                            acks[i] = new SubscriptionAcknowledgement(this.subscriptionId, outstandingAcknowledgements.remove());
+                        }
+                    }
+
+                    PublishRequest publishRequest = new PublishRequest((byte) 1,
+                        (byte) 0,
+                        requestHeader,
+                        ackLength,
+                        acks
+                    );
+
+                    try {
+                        WriteBuffer buffer = new WriteBuffer(publishRequest.getLengthInBytes(), true);
+                        OpcuaMessageIO.staticSerialize(buffer, publishRequest);
+
+                        int transactionId = this.plcSubscriber.getTransactionIdentifier();
+
+                        OpcuaMessageRequest createMessageRequest = new OpcuaMessageRequest(OpcuaProtocolLogic.FINAL_CHUNK,
+                            this.plcSubscriber.getChannelId(),
+                            this.plcSubscriber.getTokenId(),
+                            transactionId,
+                            transactionId,
+                            buffer.getData());
+
+                        RequestTransactionManager.RequestTransaction transaction = tm.startRequest();
+                        outstandingRequests.add((long) requestHandle);
+                        transaction.submit(() -> this.plcSubscriber.getConversationContext().sendRequest(new OpcuaAPU(createMessageRequest))
+                            .expectResponse(OpcuaAPU.class, OpcuaProtocolLogic.REQUEST_TIMEOUT)
+                            .onError((p, e) -> LOGGER.error("Unable to maintain subscription"))
+                            .check(p -> p.getMessage() instanceof OpcuaMessageResponse)
+                            .unwrap(p -> (OpcuaMessageResponse) p.getMessage())
+                            .handle(opcuaResponse -> {
+                                PublishResponse responseMessage = null;
+                                try {
+                                    responseMessage = (PublishResponse) OpcuaMessageIO.staticParse(new ReadBuffer(opcuaResponse.getMessage(), true));
+                                } catch (ParseException e) {
+                                    e.printStackTrace();
+                                }
+                                outstandingRequests.remove(responseMessage.getResponseHeader().getRequestHandle());
+                                outstandingAcknowledgements.add(responseMessage.getResponseHeader().getRequestHandle());
+
+                                if (responseMessage.getNotificationMessage().getNoOfNotificationData() > 0) {
+
+                                }
+                                for (ExtensionObject notifications : responseMessage.getNotificationMessage().getNotificationData()) {
+
+                                }
+
+
+
+                                // Pass the response back to the application.
+
+                                // Finish the request-transaction.
+                                transaction.endRequest();
+                            }));
+                    } catch (ParseException e) {
+                        LOGGER.info("Unable to serialize subscription request");
                     }
                 }
 
-                PublishRequest publishRequest = new PublishRequest((byte) 1,
-                    (byte) 0,
-                    requestHeader,
-                    ackLength,
-                    acks
-                );
 
-                //Pick up from here, also create a Utils class for static variables.
-                try {
-                    WriteBuffer buffer = new WriteBuffer(createSubscriptionRequest.getLengthInBytes(), true);
-                    OpcuaMessageIO.staticSerialize(buffer, createSubscriptionRequest);
-
-                    int transactionId = getTransactionIdentifier();
-
-                    OpcuaMessageRequest createMessageRequest = new OpcuaMessageRequest(FINAL_CHUNK,
-                        channelId.get(),
-                        tokenId.get(),
-                        transactionId,
-                        transactionId,
-                        buffer.getData());
-
-                    RequestTransactionManager.RequestTransaction transaction = tm.startRequest();
-                    transaction.submit(() -> context.sendRequest(new OpcuaAPU(createMessageRequest))
-                        .expectResponse(OpcuaAPU.class, REQUEST_TIMEOUT)
-                        .onTimeout(future::completeExceptionally)
-                        .onError((p, e) -> future.completeExceptionally(e))
-                        .check(p -> p.getMessage() instanceof OpcuaMessageResponse)
-                        .unwrap(p -> (OpcuaMessageResponse) p.getMessage())
-                        .handle(opcuaResponse -> {
-                            CreateSubscriptionResponse responseMessage = null;
-                            try {
-                                responseMessage = (CreateSubscriptionResponse) OpcuaMessageIO.staticParse(new ReadBuffer(opcuaResponse.getMessage(), true));
-                            } catch (ParseException e) {
-                                e.printStackTrace();
-                            }
-
-                            // Pass the response back to the application.
-                            future.complete(responseMessage);
-
-                            // Finish the request-transaction.
-                            transaction.endRequest();
-                        }));
-                } catch (ParseException e) {
-                    LOGGER.info("Unable to serialize subscription request");
-                }
+            } catch (Exception e) {
+                LOGGER.error("Failed :(");
+                e.printStackTrace();
             }
-
-
-
-
-
-            return;
+            return null;
         });
-
+        return;
     }
 
 

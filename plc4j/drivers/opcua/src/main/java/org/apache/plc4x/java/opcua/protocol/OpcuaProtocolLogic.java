@@ -87,14 +87,14 @@ public class OpcuaProtocolLogic extends Plc4xProtocolBase<OpcuaAPU> implements H
     private static final int VERSION = 0;
     private static final String PASSWORD_ENCRYPTION_ALGORITHM = "http://www.w3.org/2001/04/xmlenc#rsa-oaep";
     private static final PascalString SECURITY_POLICY_NONE = new PascalString("http://opcfoundation.org/UA/SecurityPolicy#None".length(), "http://opcfoundation.org/UA/SecurityPolicy#None");
-    private static final PascalString NULL_STRING = new PascalString(-1, null);
+    protected static final PascalString NULL_STRING = new PascalString(-1, null);
     private static final PascalByteString NULL_BYTE_STRING = new PascalByteString( -1, new byte[0]);
     private static ExpandedNodeId NULL_EXPANDED_NODEID = new ExpandedNodeIdTwoByte(false,
         false,
         null,
         null,
         new TwoByteNodeId((short) 0));
-    private static final ExtensionObject NULL_EXTENSION_OBJECT = new ExtensionObject(NULL_EXPANDED_NODEID,
+    protected static final ExtensionObject NULL_EXTENSION_OBJECT = new ExtensionObject(NULL_EXPANDED_NODEID,
         (short) 0,
         null,               //Body Length
         null);               // Body
@@ -102,7 +102,7 @@ public class OpcuaProtocolLogic extends Plc4xProtocolBase<OpcuaAPU> implements H
     private static final PascalString APPLICATION_URI = new PascalString("urn:apache:plc4x:client".length(), "urn:apache:plc4x:client");
     private static final PascalString PRODUCT_URI = new PascalString("urn:apache:plc4x:client".length(), "urn:apache:plc4x:client");
     private static final PascalString APPLICATION_TEXT = new PascalString("OPCUA client for the Apache PLC4X:PLC4J project".length(), "OPCUA client for the Apache PLC4X:PLC4J project");
-    private static final String FINAL_CHUNK = "F";
+    public static final String FINAL_CHUNK = "F";
     private static final String CONTINUATION_CHUNK = "C";
     private static final String ABORT_CHUNK = "F";
 
@@ -179,6 +179,9 @@ public class OpcuaProtocolLogic extends Plc4xProtocolBase<OpcuaAPU> implements H
 
     @Override
     public void onDisconnect(ConversationContext<OpcuaAPU> context) {
+        for (Map.Entry<Long, OpcuaSubscriptionHandle> subscriber : subscriptions.entrySet()) {
+            subscriber.getValue().stopSubscriber();
+        }
         int transactionId = getTransactionIdentifier();
 
         int requestHandle = getRequestHandle();
@@ -1479,7 +1482,7 @@ public class OpcuaProtocolLogic extends Plc4xProtocolBase<OpcuaAPU> implements H
                         CreateSubscriptionResponse response = subscription.get(REQUEST_TIMEOUT_LONG, TimeUnit.MILLISECONDS);
                         //Store this somewhere safe
                         subscriptionId = response.getSubscriptionId();
-                        subscriptions.put(subscriptionId, new OpcuaSubscriptionHandle(this, subscriptionId, (OpcuaField) fieldDefaultPlcSubscription.getPlcField()));
+                        subscriptions.put(subscriptionId, new OpcuaSubscriptionHandle(this, subscriptionId, (OpcuaField) fieldDefaultPlcSubscription.getPlcField(), cycleTime));
 
                         isFirst = false;
                     }
@@ -1488,10 +1491,8 @@ public class OpcuaProtocolLogic extends Plc4xProtocolBase<OpcuaAPU> implements H
                         values.put(fieldName, new ResponseItem<>(PlcResponseCode.INVALID_ADDRESS, null));
                     } else {
                         values.put(fieldName, new ResponseItem<>(PlcResponseCode.OK,
-                            new OpcuaSubscriptionHandle(this, subscriptionId, (OpcuaField) fieldDefaultPlcSubscription.getPlcField())));
+                            new OpcuaSubscriptionHandle(this, subscriptionId, (OpcuaField) fieldDefaultPlcSubscription.getPlcField(), cycleTime)));
                     }
-
-                    System.out.println(((OpcuaField) fieldDefaultPlcSubscription.getPlcField()).toString());
 
                     NodeId idNode = generateNodeId((OpcuaField) fieldDefaultPlcSubscription.getPlcField());
 
@@ -1540,6 +1541,7 @@ public class OpcuaProtocolLogic extends Plc4xProtocolBase<OpcuaAPU> implements H
                     LOGGER.warn("Unable to subscribe Elements because of: {}", e.getMessage());
                 }
             }
+
             CreateMonitoredItemsResponse monitoredItemsResponse = null;
             try {
                 CompletableFuture<CreateMonitoredItemsResponse> monitoredItemsResponseFuture = onSubscribeCreateMonitoredItemsRequest(requestList, subscriptionId);
@@ -1550,6 +1552,7 @@ public class OpcuaProtocolLogic extends Plc4xProtocolBase<OpcuaAPU> implements H
             } catch (ExecutionException e) {
                 LOGGER.warn("Unable to subscribe Elements because of: {}", e.getMessage());
             }
+            subscriptions.get(subscriptionId).startSubscriber();
             /*
             BiConsumer<UaMonitoredItem, Integer> onItemCreated =
                 (item, id) -> item.setValueConsumer(subscriptionHandle::onSubscriptionValue);
@@ -1762,11 +1765,49 @@ public class OpcuaProtocolLogic extends Plc4xProtocolBase<OpcuaAPU> implements H
         return transactionId;
     }
 
-    private long getCurrentDateTime() {
+    /**
+     * Returns the authentication token for the current connection
+     *
+     * @return a NodeId Authentication token
+     */
+    public NodeId getAuthenticationToken() {
+        return this.authenticationToken;
+    }
+
+    /**
+     * Gets the Channel identifier for the current channel
+     *
+     * @return int representing the channel identifier
+     */
+    public int getChannelId() {
+        return this.channelId.get();
+    }
+
+    /**
+     * Gets the Token Identifier
+     *
+     * @return int representing the token identifier
+     */
+    public int getTokenId() {
+        return this.tokenId.get();
+    }
+
+    /**
+     * Gets the Conversation Context.
+     *
+     * @return int representing the token identifier
+     */
+    public ConversationContext<OpcuaAPU> getConversationContext() {
+        return this.context;
+    }
+
+
+
+    public static long getCurrentDateTime() {
         return (System.currentTimeMillis() * 10000) + EPOCH_OFFSET;
     }
 
-    private long getDateTime(long dateTime) {
+    public static long getDateTime(long dateTime) {
         return (dateTime - EPOCH_OFFSET) / 10000;
     }
 

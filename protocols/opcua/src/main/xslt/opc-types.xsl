@@ -75,7 +75,19 @@
         <xsl:apply-templates select="$file/node:UANodeSet/node:UADataType[@BrowseName='WriteRequest']"/>
         <xsl:apply-templates select="$file/node:UANodeSet/node:UADataType[@BrowseName='WriteResponse']"/>
         <xsl:apply-templates select="$file/node:UANodeSet/node:UADataType[@BrowseName='PublishRequest']"/>
-        <xsl:apply-templates select="$file/node:UANodeSet/node:UADataType[@BrowseName='PublishResponse']"/>
+        ['829' PublishResponse
+            [simple ResponseHeader 'responseHeader']
+            [simple uint 32 'subscriptionId']
+            [simple int 32 'noOfAvailableSequenceNumbers']
+            [array uint 32  'availableSequenceNumbers' count 'noOfAvailableSequenceNumbers']
+            [reserved uint 7 '0x00']
+            [simple bit 'moreNotifications']
+            [simple NotificationMessage 'notificationMessage']
+            [simple int 32 'noOfResults']
+            [array StatusCode  'results' count 'noOfResults']
+            [simple int 32 'noOfDiagnosticInfos']
+            [array DiagnosticInfo  'diagnosticInfos' count 'noOfDiagnosticInfos']
+        ]
         <xsl:apply-templates select="$file/node:UANodeSet/node:UADataType[@BrowseName='BrowseRequest']"/>
         <xsl:apply-templates select="$file/node:UANodeSet/node:UADataType[@BrowseName='BrowseResponse']"/>
         <xsl:apply-templates select="$file/node:UANodeSet/node:UADataType[@BrowseName='GetEndpointsRequest']"/>
@@ -399,40 +411,31 @@
     ]
 ]
 
-[discriminatedType 'ExpandedNodeId'
+[type 'ExpandedNodeId'
     [simple bit 'namespaceURISpecified']
     [simple bit 'serverIndexSpecified']
-    [discriminator NodeIdType 'nodeIdType']
-    [typeSwitch 'nodeIdType'
-        ['NodeIdType.nodeIdTypeTwoByte' ExpandedNodeIdTwoByte
-            [simple TwoByteNodeId 'id']
-        ]
-        ['NodeIdType.nodeIdTypeFourByte' ExpandedNodeIdFourByte
-            [simple FourByteNodeId 'id']
-        ]
-        ['NodeIdType.nodeIdTypeNumeric' ExpandedNodeIdNumeric
-            [simple NumericNodeId 'id']
-        ]
-        ['NodeIdType.nodeIdTypeString' ExpandedNodeIdString
-            [simple StringNodeId 'id']
-        ]
-        ['NodeIdType.nodeIdTypeGuid' ExpandedNodeIdGuid
-            [simple GuidNodeId 'id']
-        ]
-        ['NodeIdType.nodeIdTypeByteString' ExpandedNodeIdByteString
-            [simple ByteStringNodeId 'id']
-        ]
-    ]
+    [simple NodeIdType 'nodeIdType']
+    [optional TwoByteNodeId 'idTwoByte' 'nodeIdType == NodeIdType.nodeIdTypeTwoByte']
+    [optional FourByteNodeId 'idFourByte' 'nodeIdType == NodeIdType.nodeIdTypeFourByte']
+    [optional NumericNodeId 'idNumeric' 'nodeIdType == NodeIdType.nodeIdTypeNumeric']
+    [optional StringNodeId 'idString' 'nodeIdType == NodeIdType.nodeIdTypeString']
+    [optional GuidNodeId 'idGuid' 'nodeIdType == NodeIdType.nodeIdTypeGuid']
+    [optional ByteStringNodeId 'idByteString' 'nodeIdType == NodeIdType.nodeIdTypeByteString']
     [optional PascalString 'namespaceURI' 'namespaceURISpecified']
     [optional uint 32 'serverIndex' 'serverIndexSpecified']
 ]
 
 [discriminatedType 'ExtensionObject'
     //A serialized object prefixed with its data type identifier.
-    [simple ExpandedNodeId 'nodeId']
+    [discriminator ExpandedNodeId 'nodeId']
     [simple uint 8 'encodingMask']
     [optional int 32 'bodyLength' 'encodingMask > 0']
     [array int 8 'body' count 'bodyLength == null ? 0 : bodyLength']
+    [typeSwitch 'nodeId.nodeIdType','nodeId.idTwoByte.identifier'
+        ['NodeIdType.nodeIdTypeTwoByte','811' DataChangeNotification
+            <xsl:apply-templates select="/opc:TypeDictionary/opc:StructuredType[@Name='DataChangeNotification']"/>
+        ]
+    ]
 ]
 
 [type 'PascalString'
@@ -451,6 +454,10 @@
     [simple bit 'textSpecified']
     [optional PascalString 'Locale' 'localeSpecified']
     [optional PascalString 'Text' 'textSpecified']
+]
+
+[type 'MonitoredItemNotification'
+    <xsl:apply-templates select="/opc:TypeDictionary/opc:StructuredType[@Name='MonitoredItemNotification']"/>
 ]
 
 [type 'QualifiedName'
