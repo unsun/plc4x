@@ -24,15 +24,19 @@ type PlcBrowseRequestBuilder interface {
 }
 
 type PlcBrowseQueryResult struct {
-	Address           string
+	Field             PlcField
+	Name              string
+	Readable          bool
+	Writable          bool
+	Subscribable      bool
 	PossibleDataTypes []string
 }
 
 type PlcBrowseRequest interface {
 	// Will not return until a potential scan is finished and will return all results in one block
 	Execute() <-chan PlcBrowseRequestResult
-	// Will create a stream of results as they come in and fire a "EOF" when it's finished
-	ExecuteStreaming() <-chan PlcBrowseQueryResult
+	// Will call the given callback for every found resource
+	ExecuteWithInterceptor(interceptor func(result PlcBrowseEvent) bool) <-chan PlcBrowseRequestResult
 	GetQueryNames() []string
 	GetQueryString(name string) string
 	PlcRequest
@@ -49,4 +53,11 @@ type PlcBrowseRequestResult struct {
 	Request  PlcBrowseRequest
 	Response PlcBrowseResponse
 	Err      error
+}
+
+type PlcBrowseEvent struct {
+	Request   PlcBrowseRequest
+	QueryName string
+	Result    *PlcBrowseQueryResult
+	Err       error
 }
