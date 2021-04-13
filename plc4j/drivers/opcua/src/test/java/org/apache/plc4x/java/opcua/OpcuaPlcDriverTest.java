@@ -78,7 +78,7 @@ public class OpcuaPlcDriverTest {
 
     //Arrays
     private static final String BOOL_ARRAY_IDENTIFIER = "ns=2;s=HelloWorld/ArrayTypes/BooleanArray";
-    private static final String BYTE_STRING_ARRAY_IDENTIFIER = "ns=2;s=HelloWorld/ArrayTypes/ByteStringArray";
+    //private static final String BYTE_STRING_ARRAY_IDENTIFIER = "ns=2;s=HelloWorld/ArrayTypes/ByteStringArray";
     private static final String BYTE_ARRAY_IDENTIFIER = "ns=2;s=HelloWorld/ArrayTypes/ByteArray";
     private static final String DOUBLE_ARRAY_IDENTIFIER = "ns=2;s=HelloWorld/ArrayTypes/DoubleArray";
     private static final String FLOAT_ARRAY_IDENTIFIER = "ns=2;s=HelloWorld/ArrayTypes/FloatArray";
@@ -180,96 +180,80 @@ public class OpcuaPlcDriverTest {
     }
 
     @Test
-    public void readVariables() throws Exception {
-        PlcConnection opcuaConnection = new PlcDriverManager().getConnection(tcpConnectionAddress);
-        assert opcuaConnection.isConnected();
+    public void readVariables() {
+        try {
+            PlcConnection opcuaConnection = new PlcDriverManager().getConnection(tcpConnectionAddress);
+            assert opcuaConnection.isConnected();
 
-        PlcReadRequest.Builder builder = opcuaConnection.readRequestBuilder();
-        builder.addItem("Bool", BOOL_IDENTIFIER_READ_WRITE);
-        builder.addItem("Byte", BYTE_IDENTIFIER_READ_WRITE);
-        builder.addItem("Double", DOUBLE_IDENTIFIER_READ_WRITE);
-        builder.addItem("Float", FLOAT_IDENTIFIER_READ_WRITE);
-        builder.addItem("Int16", INT16_IDENTIFIER_READ_WRITE);
-        builder.addItem("Int32", INT32_IDENTIFIER_READ_WRITE);
-        builder.addItem("Int64", INT64_IDENTIFIER_READ_WRITE);
-        builder.addItem("Integer", INTEGER_IDENTIFIER_READ_WRITE);
-        builder.addItem("SByte", SBYTE_IDENTIFIER_READ_WRITE);
-        builder.addItem("String", STRING_IDENTIFIER_READ_WRITE);
-        builder.addItem("UInt16", UINT16_IDENTIFIER_READ_WRITE);
-        builder.addItem("UInt32", UINT32_IDENTIFIER_READ_WRITE);
-        builder.addItem("UInt64", UINT64_IDENTIFIER_READ_WRITE);
-        builder.addItem("UInteger", UINTEGER_IDENTIFIER_READ_WRITE);
-        builder.addItem("ByteString", BYTE_STRING_IDENTIFIER_READ_WRITE);
-        builder.addItem("DateTime", DATE_TIME_READ_WRITE);
-        builder.addItem("Duration", DURATION_READ_WRITE);
-        builder.addItem("GUID", GUID_READ_WRITE);
-        builder.addItem("XmlElement", XML_ELEMENT_READ_WRITE);
-        builder.addItem("Variant", VARIANT_READ_WRITE);
-        builder.addItem("LocalizedText", LOCALIZED_READ_WRITE);
-        builder.addItem("QualifiedName", QUALIFIED_NAM_READ_WRITE);
-        builder.addItem("NodeId", NODE_ID_READ_WRITE);
-        builder.addItem("UtcTime", UTC_TIME_READ_WRITE);
+            PlcReadRequest.Builder builder = opcuaConnection.readRequestBuilder();
+            builder.addItem("Bool", BOOL_IDENTIFIER_READ_WRITE);
+            builder.addItem("Byte", BYTE_IDENTIFIER_READ_WRITE);
+            builder.addItem("Double", DOUBLE_IDENTIFIER_READ_WRITE);
+            builder.addItem("Float", FLOAT_IDENTIFIER_READ_WRITE);
+            builder.addItem("Int16", INT16_IDENTIFIER_READ_WRITE);
+            builder.addItem("Int32", INT32_IDENTIFIER_READ_WRITE);
+            builder.addItem("Int64", INT64_IDENTIFIER_READ_WRITE);
+            builder.addItem("Integer", INTEGER_IDENTIFIER_READ_WRITE);
+            builder.addItem("SByte", SBYTE_IDENTIFIER_READ_WRITE);
+            builder.addItem("String", STRING_IDENTIFIER_READ_WRITE);
+            builder.addItem("UInt16", UINT16_IDENTIFIER_READ_WRITE);
+            builder.addItem("UInt32", UINT32_IDENTIFIER_READ_WRITE);
+            builder.addItem("UInt64", UINT64_IDENTIFIER_READ_WRITE);
+            builder.addItem("UInteger", UINTEGER_IDENTIFIER_READ_WRITE);
 
-        builder.addItem("BoolArray", BOOL_ARRAY_IDENTIFIER);
-        builder.addItem("ByteStringArray", BYTE_STRING_ARRAY_IDENTIFIER);
-        builder.addItem("ByteArray", BYTE_ARRAY_IDENTIFIER);
-        builder.addItem("DoubleArray", DOUBLE_ARRAY_IDENTIFIER);
-        builder.addItem("FloatArray", FLOAT_ARRAY_IDENTIFIER);
-        builder.addItem("Int16Array", INT16_ARRAY_IDENTIFIER);
-        builder.addItem("Int32Array", INT32_ARRAY_IDENTIFIER);
-        builder.addItem("Int64Array", INT64_ARRAY_IDENTIFIER);
-        builder.addItem("SByteArray", SBYTE_ARRAY_IDENTIFIER);
-        builder.addItem("StringArray", STRING_ARRAY_IDENTIFIER);
-        builder.addItem("UInt16Array", UINT16_ARRAY_IDENTIFIER);
-        builder.addItem("UInt32Array", UINT32_ARRAY_IDENTIFIER);
-        builder.addItem("UInt64Array", UINT64_ARRAY_IDENTIFIER);
-        builder.addItem("DateTimeArray", DATE_TIME_ARRAY_IDENTIFIER);
+            builder.addItem("BoolArray", BOOL_ARRAY_IDENTIFIER);
+            //builder.addItem("ByteStringArray", BYTE_STRING_ARRAY_IDENTIFIER);
+            builder.addItem("ByteArray", BYTE_ARRAY_IDENTIFIER);
+            builder.addItem("DoubleArray", DOUBLE_ARRAY_IDENTIFIER);
+            builder.addItem("FloatArray", FLOAT_ARRAY_IDENTIFIER);
+            builder.addItem("Int16Array", INT16_ARRAY_IDENTIFIER);
+            builder.addItem("Int32Array", INT32_ARRAY_IDENTIFIER);
+            builder.addItem("Int64Array", INT64_ARRAY_IDENTIFIER);
+            builder.addItem("SByteArray", SBYTE_ARRAY_IDENTIFIER);
+            builder.addItem("StringArray", STRING_ARRAY_IDENTIFIER);
+            builder.addItem("UInt16Array", UINT16_ARRAY_IDENTIFIER);
+            builder.addItem("UInt32Array", UINT32_ARRAY_IDENTIFIER);
+            builder.addItem("UInt64Array", UINT64_ARRAY_IDENTIFIER);
 
-        builder.addItem("DoesNotExists", DOES_NOT_EXIST_IDENTIFIER_READ_WRITE);
+            builder.addItem("DoesNotExists", DOES_NOT_EXIST_IDENTIFIER_READ_WRITE);
 
-        PlcReadRequest request = builder.build();
-        PlcReadResponse response = request.execute().get();
-        assert response.getResponseCode("Bool").equals(PlcResponseCode.OK);
-        assert response.getResponseCode("Byte").equals(PlcResponseCode.OK);
-        assert response.getResponseCode("Double").equals(PlcResponseCode.OK);
-        assert response.getResponseCode("Float").equals(PlcResponseCode.OK);
-        assert response.getResponseCode("Int16").equals(PlcResponseCode.OK);
-        assert response.getResponseCode("Int32").equals(PlcResponseCode.OK);
-        assert response.getResponseCode("Int64").equals(PlcResponseCode.OK);
-        assert response.getResponseCode("Integer").equals(PlcResponseCode.OK);
-        assert response.getResponseCode("SByte").equals(PlcResponseCode.OK);
-        assert response.getResponseCode("String").equals(PlcResponseCode.OK);
-        assert response.getResponseCode("UInt16").equals(PlcResponseCode.OK);
-        assert response.getResponseCode("UInt32").equals(PlcResponseCode.OK);
-        assert response.getResponseCode("UInt64").equals(PlcResponseCode.OK);
-        assert response.getResponseCode("UInteger").equals(PlcResponseCode.OK);
-        assert response.getResponseCode("ByteString").equals(PlcResponseCode.OK);
-        assert response.getResponseCode("DateTime").equals(PlcResponseCode.OK);
-        assert response.getResponseCode("Duration").equals(PlcResponseCode.OK);
-        assert response.getResponseCode("GUID").equals(PlcResponseCode.OK);
-        assert response.getResponseCode("XmlElement").equals(PlcResponseCode.OK);
-        assert response.getResponseCode("Variant").equals(PlcResponseCode.OK);
-        assert response.getResponseCode("LocalizedText").equals(PlcResponseCode.OK);
-        assert response.getResponseCode("QualifiedName").equals(PlcResponseCode.OK);
+            PlcReadRequest request = builder.build();
+            PlcReadResponse response = request.execute().get();
+            assert response.getResponseCode("Bool").equals(PlcResponseCode.OK);
+            assert response.getResponseCode("Byte").equals(PlcResponseCode.OK);
+            assert response.getResponseCode("Double").equals(PlcResponseCode.OK);
+            assert response.getResponseCode("Float").equals(PlcResponseCode.OK);
+            assert response.getResponseCode("Int16").equals(PlcResponseCode.OK);
+            assert response.getResponseCode("Int32").equals(PlcResponseCode.OK);
+            assert response.getResponseCode("Int64").equals(PlcResponseCode.OK);
+            assert response.getResponseCode("Integer").equals(PlcResponseCode.OK);
+            assert response.getResponseCode("SByte").equals(PlcResponseCode.OK);
+            assert response.getResponseCode("String").equals(PlcResponseCode.OK);
+            assert response.getResponseCode("UInt16").equals(PlcResponseCode.OK);
+            assert response.getResponseCode("UInt32").equals(PlcResponseCode.OK);
+            assert response.getResponseCode("UInt64").equals(PlcResponseCode.OK);
+            assert response.getResponseCode("UInteger").equals(PlcResponseCode.OK);
 
-        assert response.getResponseCode("BoolArray").equals(PlcResponseCode.OK);
-        assert response.getResponseCode("ByteArray").equals(PlcResponseCode.OK);
-        assert response.getResponseCode("DoubleArray").equals(PlcResponseCode.OK);
-        assert response.getResponseCode("FloatArray").equals(PlcResponseCode.OK);
-        assert response.getResponseCode("Int16Array").equals(PlcResponseCode.OK);
-        assert response.getResponseCode("Int32Array").equals(PlcResponseCode.OK);
-        assert response.getResponseCode("Int64Array").equals(PlcResponseCode.OK);
-        assert response.getResponseCode("SByteArray").equals(PlcResponseCode.OK);
-        assert response.getResponseCode("StringArray").equals(PlcResponseCode.OK);
-        assert response.getResponseCode("UInt16Array").equals(PlcResponseCode.OK);
-        assert response.getResponseCode("UInt32Array").equals(PlcResponseCode.OK);
-        assert response.getResponseCode("UInt64Array").equals(PlcResponseCode.OK);
-        assert response.getResponseCode("DateTimeArray").equals(PlcResponseCode.OK);
+            assert response.getResponseCode("BoolArray").equals(PlcResponseCode.OK);
+            assert response.getResponseCode("ByteArray").equals(PlcResponseCode.OK);
+            assert response.getResponseCode("DoubleArray").equals(PlcResponseCode.OK);
+            assert response.getResponseCode("FloatArray").equals(PlcResponseCode.OK);
+            assert response.getResponseCode("Int16Array").equals(PlcResponseCode.OK);
+            assert response.getResponseCode("Int32Array").equals(PlcResponseCode.OK);
+            assert response.getResponseCode("Int64Array").equals(PlcResponseCode.OK);
+            assert response.getResponseCode("SByteArray").equals(PlcResponseCode.OK);
+            assert response.getResponseCode("StringArray").equals(PlcResponseCode.OK);
+            assert response.getResponseCode("UInt16Array").equals(PlcResponseCode.OK);
+            assert response.getResponseCode("UInt32Array").equals(PlcResponseCode.OK);
+            assert response.getResponseCode("UInt64Array").equals(PlcResponseCode.OK);
 
-        assert response.getResponseCode("DoesNotExists").equals(PlcResponseCode.NOT_FOUND);
+            assert response.getResponseCode("DoesNotExists").equals(PlcResponseCode.NOT_FOUND);
 
-        opcuaConnection.close();
-        assert !opcuaConnection.isConnected();
+            opcuaConnection.close();
+            assert !opcuaConnection.isConnected();
+        } catch (Exception e) {
+            fail("Exception during readVariables Test EXCEPTION: " + e.getMessage());
+        }
     }
 
     @Test
@@ -279,7 +263,7 @@ public class OpcuaPlcDriverTest {
 
         PlcWriteRequest.Builder builder = opcuaConnection.writeRequestBuilder();
         builder.addItem("Bool", BOOL_IDENTIFIER_READ_WRITE, true);
-        builder.addItem("Byte", BYTE_IDENTIFIER_READ_WRITE + ":BYTE", 3);
+        builder.addItem("Byte", BYTE_IDENTIFIER_READ_WRITE + ":BYTE", (short) 3);
         builder.addItem("Double", DOUBLE_IDENTIFIER_READ_WRITE, 0.5d);
         builder.addItem("Float", FLOAT_IDENTIFIER_READ_WRITE, 0.5f);
         builder.addItem("Int16", INT16_IDENTIFIER_READ_WRITE + ":INT", 1);

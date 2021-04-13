@@ -86,6 +86,7 @@ type MessageCodec interface {
 	GetDefaultIncomingMessageChannel() chan interface{}
 }
 
+// DefaultCodecRequiredInterface adds required methods to MessageCodec that are needed when using DefaultCodec
 type DefaultCodecRequiredInterface interface {
 	MessageCodec
 	TimeoutExpectations(now time.Time)
@@ -93,6 +94,7 @@ type DefaultCodecRequiredInterface interface {
 	Receive() (interface{}, error)
 }
 
+// DefaultCodec is a default codec implementation which has so sensitive defaults for message handling and a built-in worker
 type DefaultCodec struct {
 	DefaultCodecRequiredInterface
 	TransportInstance             transports.TransportInstance
@@ -171,6 +173,7 @@ func (m *DefaultCodec) TimeoutExpectations(now time.Time) {
 			// Remove this expectation from the list.
 			m.Expectations = append(m.Expectations[:index], m.Expectations[index+1:]...)
 			// Call the error handler.
+			// TODO: decouple from worker thread
 			err := expectation.GetHandleError()(plcerrors.NewTimeoutError(now.Sub(expectation.GetExpiration())))
 			if err != nil {
 				log.Error().Err(err).Msg("Got an error handling error on expectation")
@@ -186,9 +189,11 @@ func (m *DefaultCodec) HandleMessages(message interface{}) bool {
 		// If it does, let it handle the message.
 		if accepts := expectation.GetAcceptsMessage()(message); accepts {
 			log.Debug().Stringer("expectation", expectation).Msg("accepts message")
+			// TODO: decouple from worker thread
 			err := expectation.GetHandleMessage()(message)
 			if err != nil {
 				// Pass the error to the error handler.
+				// TODO: decouple from worker thread
 				err := expectation.GetHandleError()(err)
 				if err != nil {
 					log.Error().Err(err).Msg("Got an error handling error on expectation")

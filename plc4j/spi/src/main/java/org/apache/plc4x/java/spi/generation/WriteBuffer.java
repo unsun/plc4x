@@ -265,15 +265,19 @@ public class WriteBuffer {
 
     public void writeString(int bitLength, String encoding, String value) throws ParseException {
         final byte[] bytes = value.getBytes(Charset.forName(encoding.replaceAll("[^a-zA-Z0-9]","")));
+        int fixedByteLength = bitLength / 8;
+
+        if (bitLength == 0) {
+            fixedByteLength = bytes.length;
+        }
+
         try {
-            int count = 0;
-            for (byte aByte : bytes) {
-                if (count < (bitLength / 8) || (bitLength == -1)) {
-                    bo.writeByte(false, 8, aByte);
+            for (int i = 0; i < fixedByteLength; i++) {
+                if (i >= bytes.length) {
+                    bo.writeByte(false, 8, (byte) 0x00);
                 } else {
-                    break;
+                    bo.writeByte(false, 8, bytes[i]);
                 }
-                count += 1;
             }
         } catch (IOException e) {
            throw new ParseException("Error writing string", e);
