@@ -22,6 +22,7 @@ package org.apache.plc4x.plugins.codegenerator.language.mspec.model.definitions;
 import org.apache.plc4x.plugins.codegenerator.types.definitions.Argument;
 import org.apache.plc4x.plugins.codegenerator.types.definitions.ComplexTypeDefinition;
 import org.apache.plc4x.plugins.codegenerator.types.fields.*;
+import org.graalvm.compiler.core.common.type.ArithmeticOpTable;
 
 import java.util.Collections;
 import java.util.LinkedList;
@@ -63,6 +64,11 @@ public class DefaultComplexTypeDefinition extends DefaultTypeDefinition implemen
     public List<PropertyField> getPropertyFields() {
         return fields.stream().filter(field -> ((field instanceof PropertyField) && !(field instanceof ConstField) && !(field instanceof VirtualField))).map(field -> (PropertyField) field)
             .collect(Collectors.toList());
+    }
+
+    public List<AbstractField> getAbstractFields() {
+        return fields.stream().filter(field -> field instanceof AbstractField).map(
+            field -> (AbstractField) field).collect(Collectors.toList());
     }
 
     @Override

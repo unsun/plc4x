@@ -503,23 +503,33 @@ public class JavaLanguageTemplateHelper extends BaseFreemarkerLanguageTemplateHe
     }
 
     public String toSerializationExpression(TypedField field, Term term, Argument[] serializerArgments) {
+        System.out.println(field);
+        System.out.println(term);
         return toExpression(field, term, term1 -> toVariableSerializationExpression(field, term1, serializerArgments));
     }
 
     private String toExpression(TypedField field, Term term, Function<Term, String> variableExpressionGenerator) {
+        System.out.println(field);
+        System.out.println(term);
+
         if (term == null) {
             return "";
         }
         if (term instanceof Literal) {
             if (term instanceof NullLiteral) {
+                System.out.println("Blah10");
                 return "null";
             } else if (term instanceof BooleanLiteral) {
+                System.out.println("Blah11");
                 return Boolean.toString(((BooleanLiteral) term).getValue());
             } else if (term instanceof NumericLiteral) {
+                System.out.println("Blah12");
                 return ((NumericLiteral) term).getNumber().toString();
             } else if (term instanceof StringLiteral) {
+                System.out.println("Blah13");
                 return "\"" + ((StringLiteral) term).getValue() + "\"";
             } else if (term instanceof VariableLiteral) {
+                System.out.println("Blah14");
                 VariableLiteral variableLiteral = (VariableLiteral) term;
                 // If this literal references an Enum type, then we have to output it differently.
                 if (getTypeDefinitions().get(variableLiteral.getName()) instanceof EnumTypeDefinition) {
@@ -533,6 +543,7 @@ public class JavaLanguageTemplateHelper extends BaseFreemarkerLanguageTemplateHe
                 throw new RuntimeException("Unsupported Literal type " + term.getClass().getName());
             }
         } else if (term instanceof UnaryTerm) {
+            System.out.println("Blah15");
             UnaryTerm ut = (UnaryTerm) term;
             Term a = ut.getA();
             switch (ut.getOperation()) {
@@ -546,6 +557,7 @@ public class JavaLanguageTemplateHelper extends BaseFreemarkerLanguageTemplateHe
                     throw new RuntimeException("Unsupported unary operation type " + ut.getOperation());
             }
         } else if (term instanceof BinaryTerm) {
+            System.out.println("Blah16");
             BinaryTerm bt = (BinaryTerm) term;
             Term a = bt.getA();
             Term b = bt.getB();
@@ -557,6 +569,7 @@ public class JavaLanguageTemplateHelper extends BaseFreemarkerLanguageTemplateHe
                     return "(" + toExpression(field, a, variableExpressionGenerator) + ") " + operation + " (" + toExpression(field, b, variableExpressionGenerator) + ")";
             }
         } else if (term instanceof TernaryTerm) {
+            System.out.println("Blah17");
             TernaryTerm tt = (TernaryTerm) term;
             if ("if".equals(tt.getOperation())) {
                 Term a = tt.getA();
@@ -574,6 +587,7 @@ public class JavaLanguageTemplateHelper extends BaseFreemarkerLanguageTemplateHe
     private String toVariableParseExpression(TypedField field, Term term, Argument[] parserArguments) {
         VariableLiteral vl = (VariableLiteral) term;
         // CAST expressions are special as we need to add a ".class" to the second parameter in Java.
+        System.out.println("Blah1");
         if ("CAST".equals(vl.getName())) {
             StringBuilder sb = new StringBuilder(vl.getName());
             if ((vl.getArgs() == null) || (vl.getArgs().size() != 2)) {
@@ -642,10 +656,12 @@ public class JavaLanguageTemplateHelper extends BaseFreemarkerLanguageTemplateHe
         }
         // If we are accessing implicit fields, we need to rely on a local variable instead.
         else if (isVariableLiteralImplicitField(vl)) {
+            System.out.println("Blah2");
             return vl.getName();
         }
         // All uppercase names are not fields, but utility methods.
         else if (vl.getName().equals(vl.getName().toUpperCase())) {
+            System.out.println("Blah3");
             StringBuilder sb = new StringBuilder(vl.getName());
             if (vl.getArgs() != null) {
                 sb.append("(");
@@ -662,12 +678,18 @@ public class JavaLanguageTemplateHelper extends BaseFreemarkerLanguageTemplateHe
             if (vl.getIndex() != VariableLiteral.NO_INDEX) {
                 sb.append("[").append(vl.getIndex()).append("]");
             }
+            System.out.println("Blah4");
             return sb.toString() + ((vl.getChild() != null) ? "." + toVariableExpressionRest(vl.getChild()) : "");
         }
+        System.out.println("Blah5");
         return vl.getName() + ((vl.getChild() != null) ? "." + toVariableExpressionRest(vl.getChild()) : "");
     }
 
     private String toVariableSerializationExpression(TypedField field, Term term, Argument[] serialzerArguments) {
+        System.out.println(field);
+        System.out.println(term);
+        System.out.println(serialzerArguments);
+
         VariableLiteral vl = (VariableLiteral) term;
         if ("STATIC_CALL".equals(vl.getName())) {
             StringBuilder sb = new StringBuilder();

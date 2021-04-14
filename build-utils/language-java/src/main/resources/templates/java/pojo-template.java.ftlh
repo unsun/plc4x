@@ -23,7 +23,7 @@
 <#-- @ftlvariable name="protocolName" type="java.lang.String" -->
 <#-- @ftlvariable name="outputFlavor" type="java.lang.String" -->
 <#-- @ftlvariable name="helper" type="org.apache.plc4x.language.java.JavaLanguageTemplateHelper" -->
-<#-- @ftlvariable name="type" type="org.apache.plc4x.plugins.codegenerator.types.definitions.ComplexTypeDefinition" -->
+<#-- @ftlvariable name="type" type="org.apache.plc4x.plugins.codegenerator.language.mspec.model.definitions.DefaultComplexTypeDefinition" -->
 <#-- Declare the name and type of variables declared locally inside the template -->
 <#-- @ftlvariable name="arrayField" type="org.apache.plc4x.plugins.codegenerator.types.fields.ArrayField" -->
 <#-- @ftlvariable name="checksumField" type="org.apache.plc4x.plugins.codegenerator.types.fields.ChecksumField" -->
@@ -151,20 +151,24 @@ public<#if helper.isDiscriminatedParentTypeDefinition()> abstract</#if> class ${
 </#list>
     }
 
+<#list type.getAbstractFields() as field>
+    public abstract ${helper.getLanguageTypeNameForField(field)}<#if field.loopType??>[]</#if> get${field.name?cap_first}();
+
+</#list>
+
 <#list type.propertyFields as field>
-    <#if helper.isAbstractField(field)>
-    public ${helper.getLanguageTypeNameForField(field)}<#if field.loopType??>[]</#if> abstract get${field.name?cap_first}();
-    <#else>
     public ${helper.getLanguageTypeNameForField(field)}<#if field.loopType??>[]</#if> get${field.name?cap_first}() {
         return ${field.name};
     }
-    </#if>
 
 </#list>
+
 <#list type.virtualFields as field>
+    <#if helper.isNonDiscriminatorField(field.name)>
     public ${helper.getLanguageTypeNameForField(field)}<#if field.loopType??>[]</#if> get${field.name?cap_first}() {
         return (${helper.getLanguageTypeNameForField(field)}) (${helper.toParseExpression(field, field.valueExpression, type.parserArguments)});
     }
+    </#if>
 
 </#list>
     @Override
@@ -216,9 +220,9 @@ public<#if helper.isDiscriminatedParentTypeDefinition()> abstract</#if> class ${
         <#if helper.isSimpleTypeReference(discriminatorField.type)>
             <#assign simpleTypeReference = discriminatorField.type>
             <#if helper.getLanguageTypeNameForTypeReference(discriminatorField.type) = "String">
-                lengthInBits += ${toSerializationExpression(discriminatorField, simpleTypeReference.getLengthExpression(), type.parserArguments)};
+        lengthInBits += ${helper.toSerializationExpression(discriminatorField, simpleTypeReference.getLengthExpression(), type.parserArguments)};
             <#else>
-                lengthInBits += ${simpleTypeReference.sizeInBits};
+        lengthInBits += ${simpleTypeReference.sizeInBits};
             </#if>
         <#elseif helper.isEnumField(field)>
             lengthInBits += ${helper.getEnumBaseTypeReference(discriminatorField.type).sizeInBits};
@@ -258,12 +262,11 @@ public<#if helper.isDiscriminatedParentTypeDefinition()> abstract</#if> class ${
         // Optional Field (${optionalField.name})
         if(${optionalField.name} != null) {
         <#if helper.isSimpleTypeReference(optionalField.type)>
+            <#assign simpleTypeReference = optionalField.type>
             <#if helper.getLanguageTypeNameForTypeReference(optionalField.type) = "String">
-                <#assign simpleTypeReference = optionalField.type>
-    lengthInBits += ${simpleTypeReference.getLength()};
+            lengthInBits += ${helper.toSerializationExpression(discriminatorField, simpleTypeReference.getLengthExpression(), type.parserArguments)};
             <#else>
-                <#assign simpleTypeReference = optionalField.type>
-    lengthInBits += ${simpleTypeReference.sizeInBits};
+            lengthInBits += ${simpleTypeReference.sizeInBits};
             </#if>
         <#elseif helper.isEnumField(field)>
             lengthInBits += ${helper.getEnumBaseTypeReference(optionalField.type).sizeInBits};

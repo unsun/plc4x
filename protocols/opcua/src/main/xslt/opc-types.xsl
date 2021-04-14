@@ -217,25 +217,8 @@
     <xsl:apply-templates select="/opc:TypeDictionary/opc:EnumeratedType[@Name='NodeIdType']"/>
 ]
 
-[type 'TwoByteNodeId'
-        [simple uint 8 'identifier']
-]
 
-[type 'FourByteNodeId'
-    <xsl:apply-templates select="/opc:TypeDictionary/opc:StructuredType[@Name='FourByteNodeId']"/>
-]
 
-[type 'NumericNodeId'
-    <xsl:apply-templates select="/opc:TypeDictionary/opc:StructuredType[@Name='NumericNodeId']"/>
-]
-
-[type 'StringNodeId'
-    <xsl:apply-templates select="/opc:TypeDictionary/opc:StructuredType[@Name='StringNodeId']"/>
-]
-
-[type 'GuidNodeId'
-    <xsl:apply-templates select="/opc:TypeDictionary/opc:StructuredType[@Name='GuidNodeId']"/>
-]
 
 [type 'ByteStringNodeId'
     [simple uint 16 'namespaceIndex']
@@ -384,55 +367,59 @@
     [array bit 'arrayDimensions' count 'noOfArrayDimensions == null ? 0 : noOfArrayDimensions']
 ]
 
-
-
-[discriminatedType 'NodeId'
-    [reserved int 2 '0x00']
-    [simple NodeIdType 'nodeIdType']
-    [typeSwitch 'nodeIdType'
-        ['NodeIdType.nodeIdTypeTwoByte' NodeIdTwoByte
-            [simple TwoByteNodeId 'id']
+[type 'NodeIdTypeDefinition' [NodeIdType 'nodeType']
+    [implicit nodeIdType 'type' 'nodeType']
+    [typeSwitch 'nodeType'
+        ['nodeIdTypeTwoByte' NodeIdTwoByte
+            [simple uint 8 'namespaceIndex']
+            [simple uint 8 'identifier']
         ]
-        ['NodeIdType.nodeIdTypeFourByte' NodeIdFourByte
+        ['nodeIdTypeFourByte' NodeIdFourByte
+            [simple uint 8 'namespaceIndex']
             [simple FourByteNodeId 'id']
         ]
-        ['NodeIdType.nodeIdTypeNumeric' NodeIdNumeric
+        ['nodeIdTypeNumeric' NodeIdNumeric
+            [simple uint 16 'namespaceIndex']
             [simple NumericNodeId 'id']
         ]
-        ['NodeIdType.nodeIdTypeString' NodeIdString
+        ['nodeIdTypeString' NodeIdString
+            [simple uint 16 'namespaceIndex']
             [simple StringNodeId 'id']
         ]
-        ['NodeIdType.nodeIdTypeGuid' NodeIdGuid
+        ['nodeIdTypeGuid' NodeIdGuid
+            [simple uint 16 'namespaceIndex']
             [simple GuidNodeId 'id']
         ]
-        ['NodeIdType.nodeIdTypeByteString' NodeIdByteString
+        ['nodeIdTypeByteString' NodeIdByteString
+            [simple uint 16 'namespaceIndex']
             [simple ByteStringNodeId 'id']
         ]
     ]
+
+[discriminatedType 'NodeId'
+    [reserved int 2 '0x00']
+    [implicit NodeIdType 'nodeId.nodeType']
+    [simple NodeIdTypeDefinition 'nodeId']
 ]
 
 [type 'ExpandedNodeId'
     [simple bit 'namespaceURISpecified']
     [simple bit 'serverIndexSpecified']
-    [simple NodeIdType 'nodeIdType']
-    [optional TwoByteNodeId 'idTwoByte' 'nodeIdType == NodeIdType.nodeIdTypeTwoByte']
-    [optional FourByteNodeId 'idFourByte' 'nodeIdType == NodeIdType.nodeIdTypeFourByte']
-    [optional NumericNodeId 'idNumeric' 'nodeIdType == NodeIdType.nodeIdTypeNumeric']
-    [optional StringNodeId 'idString' 'nodeIdType == NodeIdType.nodeIdTypeString']
-    [optional GuidNodeId 'idGuid' 'nodeIdType == NodeIdType.nodeIdTypeGuid']
-    [optional ByteStringNodeId 'idByteString' 'nodeIdType == NodeIdType.nodeIdTypeByteString']
+    [implicit NodeIdType 'nodeId.nodeType']
+    [simple NodeIdTypeDefinition 'nodeId']
     [optional PascalString 'namespaceURI' 'namespaceURISpecified']
     [optional uint 32 'serverIndex' 'serverIndexSpecified']
 ]
 
 [discriminatedType 'ExtensionObject'
     //A serialized object prefixed with its data type identifier.
-    [discriminator ExpandedNodeId 'nodeId']
+    [simple ExpandedNodeId 'nodeId']
+    [virtual string '-1' 'identifier' 'nodeId.id']
     [simple uint 8 'encodingMask']
     [optional int 32 'bodyLength' 'encodingMask > 0']
     [array int 8 'body' count 'bodyLength == null ? 0 : bodyLength']
-    [typeSwitch 'nodeId.nodeIdType','nodeId.idTwoByte.identifier'
-        ['NodeIdType.nodeIdTypeTwoByte','811' DataChangeNotification
+    [typeSwitch 'identifier'
+        ['811' DataChangeNotification
             <xsl:apply-templates select="/opc:TypeDictionary/opc:StructuredType[@Name='DataChangeNotification']"/>
         ]
     ]

@@ -36,10 +36,6 @@
             [simple          int 32             'maxChunkCount']
             [simple          PascalString       'endpoint']
         ]
-        ['HEL','true'     OpcuaHelloResponse
-        ]
-        ['ACK','false'     OpcuaAcknowledgeRequest
-        ]
         ['ACK','true'     OpcuaAcknowledgeResponse
             [simple          string '8'         'chunk']
             [implicit        int 32             'messageSize' 'lengthInBytes']
@@ -48,10 +44,6 @@
             [simple          int 32             'sendBufferSize']
             [simple          int 32             'maxMessageSize']
             [simple          int 32             'maxChunkCount']
-        ]
-        ['ERR','false'     OpcuaErrorRequest
-        ]
-        ['ERR','true'     OpcuaErrorResponse
         ]
         ['OPN','false'     OpcuaOpenRequest
             [simple          string '8'         'chunk']
@@ -83,8 +75,6 @@
            [simple          int 32             'sequenceNumber']
            [simple          int 32             'requestId']
            [simple          OpcuaMessage       'message']
-       ]
-       ['CLO','true'     OpcuaCloseResponse
        ]
        ['MSG','false'     OpcuaMessageRequest
            [simple          string '8'         'chunk']

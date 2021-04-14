@@ -46,10 +46,12 @@
                   <goal>wget</goal>
                 </goals>
                 <configuration>
-                  <url>https://opcfoundation.org/UA/schemas/1.04/Opc.Ua.Types.bsd</url>
+                  <url>https://raw.githubusercontent.com/OPCFoundation/UA-Nodeset/v1.04/Schema/Opc.Ua.Types.bsd</url>
                   <unpack>false</unpack>
                   <outputDirectory>${project.build.directory}/downloads</outputDirectory>
                   <outputFileName>Opc.Ua.Types.bsd</outputFileName>
+                  <skipCache>true</skipCache>
+                  <overwrite>true</overwrite>
                 </configuration>
               </execution>
             </executions>
@@ -66,7 +68,7 @@
                 <goal>wget</goal>
               </goals>
               <configuration>
-                <url>https://opcfoundation.org/UA/schemas/1.04/StatusCode.csv</url>
+                <url>https://raw.githubusercontent.com/OPCFoundation/UA-Nodeset/v1.04/Schema/StatusCode.csv</url>
                 <unpack>false</unpack>
                 <outputDirectory>${project.build.directory}/downloads</outputDirectory>
                 <outputFileName>StatusCode.csv</outputFileName>
@@ -85,7 +87,7 @@
                   <goal>wget</goal>
                 </goals>
                 <configuration>
-                  <url>https://opcfoundation.org/UA/schemas/1.04/Opc.Ua.NodeSet2.Services.xml</url>
+                  <url>https://raw.githubusercontent.com/OPCFoundation/UA-Nodeset/v1.04/Schema/Opc.Ua.NodeSet2.Services.xml</url>
                   <unpack>false</unpack>
                   <outputDirectory>${project.build.directory}/downloads</outputDirectory>
                   <outputFileName>Opc.Ua.NodeSet2.Services.xml</outputFileName>
@@ -104,7 +106,7 @@
                   <goal>wget</goal>
                 </goals>
                 <configuration>
-                  <url>https://opcfoundation.org/UA/schemas/1.04/Opc.Ua.NodeIds.Services.csv</url>
+                  <url>https://raw.githubusercontent.com/OPCFoundation/UA-Nodeset/v1.04/Schema/Opc.Ua.NodeIds.Services.csv</url>
                   <unpack>false</unpack>
                   <outputDirectory>${project.build.directory}/downloads</outputDirectory>
                   <outputFileName>Opc.Ua.NodeIds.Services.csv</outputFileName>
