@@ -367,8 +367,9 @@
     [array bit 'arrayDimensions' count 'noOfArrayDimensions == null ? 0 : noOfArrayDimensions']
 ]
 
-[type 'NodeIdTypeDefinition' [NodeIdType 'nodeType']
-    [implicit nodeIdType 'type' 'nodeType']
+[discriminatedType 'NodeIdTypeDefinition'
+    [abstract Object 'identifier']
+    [simple NodeIdType 'nodeType']
     [typeSwitch 'nodeType'
         ['nodeIdTypeTwoByte' NodeIdTwoByte
             [simple uint 8 'namespaceIndex']
@@ -376,36 +377,37 @@
         ]
         ['nodeIdTypeFourByte' NodeIdFourByte
             [simple uint 8 'namespaceIndex']
-            [simple FourByteNodeId 'id']
+            [simple uint 16 'identifier']
         ]
         ['nodeIdTypeNumeric' NodeIdNumeric
             [simple uint 16 'namespaceIndex']
-            [simple NumericNodeId 'id']
+            [simple uint 32 'identifier']
         ]
         ['nodeIdTypeString' NodeIdString
             [simple uint 16 'namespaceIndex']
-            [simple StringNodeId 'id']
+            [simple string '-1' 'identifier']
         ]
         ['nodeIdTypeGuid' NodeIdGuid
             [simple uint 16 'namespaceIndex']
-            [simple GuidNodeId 'id']
+            [simple string '-1' 'identifier']
         ]
         ['nodeIdTypeByteString' NodeIdByteString
             [simple uint 16 'namespaceIndex']
-            [simple ByteStringNodeId 'id']
+            [simple uint 32 'identifier']
         ]
     ]
+]
 
-[discriminatedType 'NodeId'
+[type 'NodeId'
     [reserved int 2 '0x00']
-    [implicit NodeIdType 'nodeId.nodeType']
+    [virtual string '-1' 'id' 'nodeId.identifier.toString']
     [simple NodeIdTypeDefinition 'nodeId']
 ]
 
 [type 'ExpandedNodeId'
     [simple bit 'namespaceURISpecified']
     [simple bit 'serverIndexSpecified']
-    [implicit NodeIdType 'nodeId.nodeType']
+    [virtual string '-1' 'utf-8' 'identifier' 'nodeId.identifier.toString']
     [simple NodeIdTypeDefinition 'nodeId']
     [optional PascalString 'namespaceURI' 'namespaceURISpecified']
     [optional uint 32 'serverIndex' 'serverIndexSpecified']
@@ -414,7 +416,7 @@
 [discriminatedType 'ExtensionObject'
     //A serialized object prefixed with its data type identifier.
     [simple ExpandedNodeId 'nodeId']
-    [virtual string '-1' 'identifier' 'nodeId.id']
+    [virtual string '-1' 'identifier' 'nodeId.identifier']
     [simple uint 8 'encodingMask']
     [optional int 32 'bodyLength' 'encodingMask > 0']
     [array int 8 'body' count 'bodyLength == null ? 0 : bodyLength']
