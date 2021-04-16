@@ -96,7 +96,11 @@ func (m *S7AddressAny) GetTypeName() string {
 }
 
 func (m *S7AddressAny) LengthInBits() uint16 {
-	lengthInBits := uint16(0)
+	return m.LengthInBitsConditional(false)
+}
+
+func (m *S7AddressAny) LengthInBitsConditional(lastItem bool) uint16 {
+	lengthInBits := uint16(m.Parent.ParentLengthInBits())
 
 	// Enum Field (transportSize)
 	lengthInBits += 8
@@ -129,7 +133,14 @@ func (m *S7AddressAny) LengthInBytes() uint16 {
 func S7AddressAnyParse(io *utils.ReadBuffer) (*S7Address, error) {
 
 	// Enum field (transportSize)
-	transportSize, _transportSizeErr := TransportSizeParse(io)
+	transportSizeCode, _transportSizeErr := io.ReadUint8(8)
+	var transportSize TransportSize
+	for _, value := range TransportSizeValues {
+		if value.Code() == transportSizeCode {
+			transportSize = value
+			break
+		}
+	}
 	if _transportSizeErr != nil {
 		return nil, errors.Wrap(_transportSizeErr, "Error parsing 'transportSize' field")
 	}
@@ -196,8 +207,7 @@ func (m *S7AddressAny) Serialize(io utils.WriteBuffer) error {
 	ser := func() error {
 
 		// Enum field (transportSize)
-		transportSize := CastTransportSize(m.TransportSize)
-		_transportSizeErr := transportSize.Serialize(io)
+		_transportSizeErr := io.WriteUint8(8, m.TransportSize.Code())
 		if _transportSizeErr != nil {
 			return errors.Wrap(_transportSizeErr, "Error serializing 'transportSize' field")
 		}
@@ -253,10 +263,12 @@ func (m *S7AddressAny) Serialize(io utils.WriteBuffer) error {
 func (m *S7AddressAny) UnmarshalXML(d *xml.Decoder, start xml.StartElement) error {
 	var token xml.Token
 	var err error
+	foundContent := false
 	token = start
 	for {
 		switch token.(type) {
 		case xml.StartElement:
+			foundContent = true
 			tok := token.(xml.StartElement)
 			switch tok.Name.Local {
 			case "transportSize":
@@ -299,7 +311,7 @@ func (m *S7AddressAny) UnmarshalXML(d *xml.Decoder, start xml.StartElement) erro
 		}
 		token, err = d.Token()
 		if err != nil {
-			if err == io.EOF {
+			if err == io.EOF && foundContent {
 				return nil
 			}
 			return err

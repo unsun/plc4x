@@ -80,15 +80,20 @@ func (m *COTPPacket) GetTypeName() string {
 }
 
 func (m *COTPPacket) LengthInBits() uint16 {
+	return m.LengthInBitsConditional(false)
+}
+
+func (m *COTPPacket) LengthInBitsConditional(lastItem bool) uint16 {
+	return m.Child.LengthInBits()
+}
+
+func (m *COTPPacket) ParentLengthInBits() uint16 {
 	lengthInBits := uint16(0)
 
 	// Implicit Field (headerLength)
 	lengthInBits += 8
 	// Discriminator Field (tpduCode)
 	lengthInBits += 8
-
-	// Length of sub-type elements will be added by sub-type...
-	lengthInBits += m.Child.LengthInBits()
 
 	// Array field
 	if len(m.Parameters) > 0 {
@@ -142,6 +147,9 @@ func COTPPacketParse(io *utils.ReadBuffer, cotpLen uint16) (*COTPPacket, error) 
 		_parent, typeSwitchError = COTPPacketDisconnectResponseParse(io)
 	case tpduCode == 0x70: // COTPPacketTpduError
 		_parent, typeSwitchError = COTPPacketTpduErrorParse(io)
+	default:
+		// TODO: return actual type
+		typeSwitchError = errors.New("Unmapped type")
 	}
 	if typeSwitchError != nil {
 		return nil, errors.Wrap(typeSwitchError, "Error parsing sub-type for type-switch.")
@@ -231,16 +239,22 @@ func (m *COTPPacket) SerializeParent(io utils.WriteBuffer, child ICOTPPacket, se
 func (m *COTPPacket) UnmarshalXML(d *xml.Decoder, start xml.StartElement) error {
 	var token xml.Token
 	var err error
+	foundContent := false
+	if start.Attr != nil && len(start.Attr) > 0 {
+		switch start.Attr[0].Value {
+		}
+	}
 	for {
 		token, err = d.Token()
 		if err != nil {
-			if err == io.EOF {
+			if err == io.EOF && foundContent {
 				return nil
 			}
 			return err
 		}
 		switch token.(type) {
 		case xml.StartElement:
+			foundContent = true
 			tok := token.(xml.StartElement)
 			switch tok.Name.Local {
 			case "parameters":
@@ -262,6 +276,9 @@ func (m *COTPPacket) UnmarshalXML(d *xml.Decoder, start xml.StartElement) error 
 			case "payload":
 				var dt *S7Message
 				if err := d.DecodeElement(&dt, &tok); err != nil {
+					if err == io.EOF {
+						continue
+					}
 					return err
 				}
 				m.Payload = dt
@@ -361,34 +378,25 @@ func (m *COTPPacket) MarshalXML(e *xml.Encoder, start xml.StartElement) error {
 	}}); err != nil {
 		return err
 	}
+	if err := e.EncodeToken(xml.StartElement{Name: xml.Name{Local: "parameters"}}); err != nil {
+		return err
+	}
+	for _, arrayElement := range m.Parameters {
+		if err := e.EncodeElement(arrayElement, xml.StartElement{Name: xml.Name{Local: "parameters"}}); err != nil {
+			return err
+		}
+	}
+	if err := e.EncodeToken(xml.EndElement{Name: xml.Name{Local: "parameters"}}); err != nil {
+		return err
+	}
+	if err := e.EncodeElement(m.Payload, xml.StartElement{Name: xml.Name{Local: "payload"}}); err != nil {
+		return err
+	}
 	marshaller, ok := m.Child.(xml.Marshaler)
 	if !ok {
 		return errors.Errorf("child is not castable to Marshaler. Actual type %T", m.Child)
 	}
 	if err := marshaller.MarshalXML(e, start); err != nil {
-		return err
-	}
-	if len(m.Parameters) <= 0 {
-		// On empty lists be produce empty tokens
-		if err := e.EncodeToken(xml.StartElement{Name: xml.Name{Local: "parameters"}}); err != nil {
-			return err
-		}
-		if err := e.EncodeToken(xml.EndElement{Name: xml.Name{Local: "parameters"}}); err != nil {
-			return err
-		}
-	}
-	for _, arrayElement := range m.Parameters {
-		if err := e.EncodeToken(xml.StartElement{Name: xml.Name{Local: "parameters"}}); err != nil {
-			return err
-		}
-		if err := e.EncodeElement(arrayElement, xml.StartElement{Name: xml.Name{Local: "parameters"}}); err != nil {
-			return err
-		}
-		if err := e.EncodeToken(xml.EndElement{Name: xml.Name{Local: "parameters"}}); err != nil {
-			return err
-		}
-	}
-	if err := e.EncodeElement(m.Payload, xml.StartElement{Name: xml.Name{Local: "payload"}}); err != nil {
 		return err
 	}
 	if err := e.EncodeToken(xml.EndElement{Name: start.Name}); err != nil {

@@ -86,6 +86,14 @@ func (m *S7Message) GetTypeName() string {
 }
 
 func (m *S7Message) LengthInBits() uint16 {
+	return m.LengthInBitsConditional(false)
+}
+
+func (m *S7Message) LengthInBitsConditional(lastItem bool) uint16 {
+	return m.Child.LengthInBits()
+}
+
+func (m *S7Message) ParentLengthInBits() uint16 {
 	lengthInBits := uint16(0)
 
 	// Const Field (protocolId)
@@ -104,9 +112,6 @@ func (m *S7Message) LengthInBits() uint16 {
 
 	// Implicit Field (payloadLength)
 	lengthInBits += 16
-
-	// Length of sub-type elements will be added by sub-type...
-	lengthInBits += m.Child.LengthInBits()
 
 	// Optional Field (parameter)
 	if m.Parameter != nil {
@@ -188,6 +193,9 @@ func S7MessageParse(io *utils.ReadBuffer) (*S7Message, error) {
 		_parent, typeSwitchError = S7MessageResponseDataParse(io)
 	case messageType == 0x07: // S7MessageUserData
 		_parent, typeSwitchError = S7MessageUserDataParse(io)
+	default:
+		// TODO: return actual type
+		typeSwitchError = errors.New("Unmapped type")
 	}
 	if typeSwitchError != nil {
 		return nil, errors.Wrap(typeSwitchError, "Error parsing sub-type for type-switch.")
@@ -299,16 +307,36 @@ func (m *S7Message) SerializeParent(io utils.WriteBuffer, child IS7Message, seri
 func (m *S7Message) UnmarshalXML(d *xml.Decoder, start xml.StartElement) error {
 	var token xml.Token
 	var err error
+	foundContent := false
+	if start.Attr != nil && len(start.Attr) > 0 {
+		switch start.Attr[0].Value {
+		// S7MessageRequest needs special treatment as it has no fields
+		case "org.apache.plc4x.java.s7.readwrite.S7MessageRequest":
+			if m.Child == nil {
+				m.Child = &S7MessageRequest{
+					Parent: m,
+				}
+			}
+		// S7MessageUserData needs special treatment as it has no fields
+		case "org.apache.plc4x.java.s7.readwrite.S7MessageUserData":
+			if m.Child == nil {
+				m.Child = &S7MessageUserData{
+					Parent: m,
+				}
+			}
+		}
+	}
 	for {
 		token, err = d.Token()
 		if err != nil {
-			if err == io.EOF {
+			if err == io.EOF && foundContent {
 				return nil
 			}
 			return err
 		}
 		switch token.(type) {
 		case xml.StartElement:
+			foundContent = true
 			tok := token.(xml.StartElement)
 			switch tok.Name.Local {
 			case "tpduReference":
@@ -320,12 +348,18 @@ func (m *S7Message) UnmarshalXML(d *xml.Decoder, start xml.StartElement) error {
 			case "parameter":
 				var dt *S7Parameter
 				if err := d.DecodeElement(&dt, &tok); err != nil {
+					if err == io.EOF {
+						continue
+					}
 					return err
 				}
 				m.Parameter = dt
 			case "payload":
 				var dt *S7Payload
 				if err := d.DecodeElement(&dt, &tok); err != nil {
+					if err == io.EOF {
+						continue
+					}
 					return err
 				}
 				m.Payload = dt
@@ -404,17 +438,17 @@ func (m *S7Message) MarshalXML(e *xml.Encoder, start xml.StartElement) error {
 	if err := e.EncodeElement(m.TpduReference, xml.StartElement{Name: xml.Name{Local: "tpduReference"}}); err != nil {
 		return err
 	}
+	if err := e.EncodeElement(m.Parameter, xml.StartElement{Name: xml.Name{Local: "parameter"}}); err != nil {
+		return err
+	}
+	if err := e.EncodeElement(m.Payload, xml.StartElement{Name: xml.Name{Local: "payload"}}); err != nil {
+		return err
+	}
 	marshaller, ok := m.Child.(xml.Marshaler)
 	if !ok {
 		return errors.Errorf("child is not castable to Marshaler. Actual type %T", m.Child)
 	}
 	if err := marshaller.MarshalXML(e, start); err != nil {
-		return err
-	}
-	if err := e.EncodeElement(m.Parameter, xml.StartElement{Name: xml.Name{Local: "parameter"}}); err != nil {
-		return err
-	}
-	if err := e.EncodeElement(m.Payload, xml.StartElement{Name: xml.Name{Local: "payload"}}); err != nil {
 		return err
 	}
 	if err := e.EncodeToken(xml.EndElement{Name: start.Name}); err != nil {

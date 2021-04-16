@@ -78,12 +78,17 @@ func (m *ServiceId) GetTypeName() string {
 }
 
 func (m *ServiceId) LengthInBits() uint16 {
+	return m.LengthInBitsConditional(false)
+}
+
+func (m *ServiceId) LengthInBitsConditional(lastItem bool) uint16 {
+	return m.Child.LengthInBits()
+}
+
+func (m *ServiceId) ParentLengthInBits() uint16 {
 	lengthInBits := uint16(0)
 	// Discriminator Field (serviceType)
 	lengthInBits += 8
-
-	// Length of sub-type elements will be added by sub-type...
-	lengthInBits += m.Child.LengthInBits()
 
 	return lengthInBits
 }
@@ -118,6 +123,9 @@ func ServiceIdParse(io *utils.ReadBuffer) (*ServiceId, error) {
 		_parent, typeSwitchError = KnxNetRemoteConfigurationAndDiagnosisParse(io)
 	case serviceType == 0x08: // KnxNetObjectServer
 		_parent, typeSwitchError = KnxNetObjectServerParse(io)
+	default:
+		// TODO: return actual type
+		typeSwitchError = errors.New("Unmapped type")
 	}
 	if typeSwitchError != nil {
 		return nil, errors.Wrap(typeSwitchError, "Error parsing sub-type for type-switch.")
@@ -154,16 +162,22 @@ func (m *ServiceId) SerializeParent(io utils.WriteBuffer, child IServiceId, seri
 func (m *ServiceId) UnmarshalXML(d *xml.Decoder, start xml.StartElement) error {
 	var token xml.Token
 	var err error
+	foundContent := false
+	if start.Attr != nil && len(start.Attr) > 0 {
+		switch start.Attr[0].Value {
+		}
+	}
 	for {
 		token, err = d.Token()
 		if err != nil {
-			if err == io.EOF {
+			if err == io.EOF && foundContent {
 				return nil
 			}
 			return err
 		}
 		switch token.(type) {
 		case xml.StartElement:
+			foundContent = true
 			tok := token.(xml.StartElement)
 			switch tok.Name.Local {
 			default:

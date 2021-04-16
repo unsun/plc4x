@@ -64,6 +64,10 @@ func (m *DIBSuppSvcFamilies) GetTypeName() string {
 }
 
 func (m *DIBSuppSvcFamilies) LengthInBits() uint16 {
+	return m.LengthInBitsConditional(false)
+}
+
+func (m *DIBSuppSvcFamilies) LengthInBitsConditional(lastItem bool) uint16 {
 	lengthInBits := uint16(0)
 
 	// Implicit Field (structureLength)
@@ -150,16 +154,18 @@ func (m *DIBSuppSvcFamilies) Serialize(io utils.WriteBuffer) error {
 func (m *DIBSuppSvcFamilies) UnmarshalXML(d *xml.Decoder, start xml.StartElement) error {
 	var token xml.Token
 	var err error
+	foundContent := false
 	for {
 		token, err = d.Token()
 		if err != nil {
-			if err == io.EOF {
+			if err == io.EOF && foundContent {
 				return nil
 			}
 			return err
 		}
 		switch token.(type) {
 		case xml.StartElement:
+			foundContent = true
 			tok := token.(xml.StartElement)
 			switch tok.Name.Local {
 			case "descriptionType":
@@ -199,25 +205,16 @@ func (m *DIBSuppSvcFamilies) MarshalXML(e *xml.Encoder, start xml.StartElement) 
 	if err := e.EncodeElement(m.DescriptionType, xml.StartElement{Name: xml.Name{Local: "descriptionType"}}); err != nil {
 		return err
 	}
-	if len(m.ServiceIds) <= 0 {
-		// On empty lists be produce empty tokens
-		if err := e.EncodeToken(xml.StartElement{Name: xml.Name{Local: "serviceIds"}}); err != nil {
-			return err
-		}
-		if err := e.EncodeToken(xml.EndElement{Name: xml.Name{Local: "serviceIds"}}); err != nil {
-			return err
-		}
+	if err := e.EncodeToken(xml.StartElement{Name: xml.Name{Local: "serviceIds"}}); err != nil {
+		return err
 	}
 	for _, arrayElement := range m.ServiceIds {
-		if err := e.EncodeToken(xml.StartElement{Name: xml.Name{Local: "serviceIds"}}); err != nil {
-			return err
-		}
 		if err := e.EncodeElement(arrayElement, xml.StartElement{Name: xml.Name{Local: "serviceIds"}}); err != nil {
 			return err
 		}
-		if err := e.EncodeToken(xml.EndElement{Name: xml.Name{Local: "serviceIds"}}); err != nil {
-			return err
-		}
+	}
+	if err := e.EncodeToken(xml.EndElement{Name: xml.Name{Local: "serviceIds"}}); err != nil {
+		return err
 	}
 	if err := e.EncodeToken(xml.EndElement{Name: start.Name}); err != nil {
 		return err

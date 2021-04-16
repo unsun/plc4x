@@ -78,10 +78,15 @@ func (m *KnxGroupAddress) GetTypeName() string {
 }
 
 func (m *KnxGroupAddress) LengthInBits() uint16 {
-	lengthInBits := uint16(0)
+	return m.LengthInBitsConditional(false)
+}
 
-	// Length of sub-type elements will be added by sub-type...
-	lengthInBits += m.Child.LengthInBits()
+func (m *KnxGroupAddress) LengthInBitsConditional(lastItem bool) uint16 {
+	return m.Child.LengthInBits()
+}
+
+func (m *KnxGroupAddress) ParentLengthInBits() uint16 {
+	lengthInBits := uint16(0)
 
 	return lengthInBits
 }
@@ -102,6 +107,9 @@ func KnxGroupAddressParse(io *utils.ReadBuffer, numLevels uint8) (*KnxGroupAddre
 		_parent, typeSwitchError = KnxGroupAddress2LevelParse(io)
 	case numLevels == 3: // KnxGroupAddress3Level
 		_parent, typeSwitchError = KnxGroupAddress3LevelParse(io)
+	default:
+		// TODO: return actual type
+		typeSwitchError = errors.New("Unmapped type")
 	}
 	if typeSwitchError != nil {
 		return nil, errors.Wrap(typeSwitchError, "Error parsing sub-type for type-switch.")
@@ -130,16 +138,22 @@ func (m *KnxGroupAddress) SerializeParent(io utils.WriteBuffer, child IKnxGroupA
 func (m *KnxGroupAddress) UnmarshalXML(d *xml.Decoder, start xml.StartElement) error {
 	var token xml.Token
 	var err error
+	foundContent := false
+	if start.Attr != nil && len(start.Attr) > 0 {
+		switch start.Attr[0].Value {
+		}
+	}
 	for {
 		token, err = d.Token()
 		if err != nil {
-			if err == io.EOF {
+			if err == io.EOF && foundContent {
 				return nil
 			}
 			return err
 		}
 		switch token.(type) {
 		case xml.StartElement:
+			foundContent = true
 			tok := token.(xml.StartElement)
 			switch tok.Name.Local {
 			default:

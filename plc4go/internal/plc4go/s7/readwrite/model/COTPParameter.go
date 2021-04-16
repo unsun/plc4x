@@ -78,15 +78,20 @@ func (m *COTPParameter) GetTypeName() string {
 }
 
 func (m *COTPParameter) LengthInBits() uint16 {
+	return m.LengthInBitsConditional(false)
+}
+
+func (m *COTPParameter) LengthInBitsConditional(lastItem bool) uint16 {
+	return m.Child.LengthInBits()
+}
+
+func (m *COTPParameter) ParentLengthInBits() uint16 {
 	lengthInBits := uint16(0)
 	// Discriminator Field (parameterType)
 	lengthInBits += 8
 
 	// Implicit Field (parameterLength)
 	lengthInBits += 8
-
-	// Length of sub-type elements will be added by sub-type...
-	lengthInBits += m.Child.LengthInBits()
 
 	return lengthInBits
 }
@@ -124,6 +129,9 @@ func COTPParameterParse(io *utils.ReadBuffer, rest uint8) (*COTPParameter, error
 		_parent, typeSwitchError = COTPParameterChecksumParse(io)
 	case parameterType == 0xE0: // COTPParameterDisconnectAdditionalInformation
 		_parent, typeSwitchError = COTPParameterDisconnectAdditionalInformationParse(io, rest)
+	default:
+		// TODO: return actual type
+		typeSwitchError = errors.New("Unmapped type")
 	}
 	if typeSwitchError != nil {
 		return nil, errors.Wrap(typeSwitchError, "Error parsing sub-type for type-switch.")
@@ -167,16 +175,22 @@ func (m *COTPParameter) SerializeParent(io utils.WriteBuffer, child ICOTPParamet
 func (m *COTPParameter) UnmarshalXML(d *xml.Decoder, start xml.StartElement) error {
 	var token xml.Token
 	var err error
+	foundContent := false
+	if start.Attr != nil && len(start.Attr) > 0 {
+		switch start.Attr[0].Value {
+		}
+	}
 	for {
 		token, err = d.Token()
 		if err != nil {
-			if err == io.EOF {
+			if err == io.EOF && foundContent {
 				return nil
 			}
 			return err
 		}
 		switch token.(type) {
 		case xml.StartElement:
+			foundContent = true
 			tok := token.(xml.StartElement)
 			switch tok.Name.Local {
 			default:

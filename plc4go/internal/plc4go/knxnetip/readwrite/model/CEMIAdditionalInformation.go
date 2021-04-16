@@ -78,12 +78,17 @@ func (m *CEMIAdditionalInformation) GetTypeName() string {
 }
 
 func (m *CEMIAdditionalInformation) LengthInBits() uint16 {
+	return m.LengthInBitsConditional(false)
+}
+
+func (m *CEMIAdditionalInformation) LengthInBitsConditional(lastItem bool) uint16 {
+	return m.Child.LengthInBits()
+}
+
+func (m *CEMIAdditionalInformation) ParentLengthInBits() uint16 {
 	lengthInBits := uint16(0)
 	// Discriminator Field (additionalInformationType)
 	lengthInBits += 8
-
-	// Length of sub-type elements will be added by sub-type...
-	lengthInBits += m.Child.LengthInBits()
 
 	return lengthInBits
 }
@@ -108,6 +113,9 @@ func CEMIAdditionalInformationParse(io *utils.ReadBuffer) (*CEMIAdditionalInform
 		_parent, typeSwitchError = CEMIAdditionalInformationBusmonitorInfoParse(io)
 	case additionalInformationType == 0x04: // CEMIAdditionalInformationRelativeTimestamp
 		_parent, typeSwitchError = CEMIAdditionalInformationRelativeTimestampParse(io)
+	default:
+		// TODO: return actual type
+		typeSwitchError = errors.New("Unmapped type")
 	}
 	if typeSwitchError != nil {
 		return nil, errors.Wrap(typeSwitchError, "Error parsing sub-type for type-switch.")
@@ -144,16 +152,22 @@ func (m *CEMIAdditionalInformation) SerializeParent(io utils.WriteBuffer, child 
 func (m *CEMIAdditionalInformation) UnmarshalXML(d *xml.Decoder, start xml.StartElement) error {
 	var token xml.Token
 	var err error
+	foundContent := false
+	if start.Attr != nil && len(start.Attr) > 0 {
+		switch start.Attr[0].Value {
+		}
+	}
 	for {
 		token, err = d.Token()
 		if err != nil {
-			if err == io.EOF {
+			if err == io.EOF && foundContent {
 				return nil
 			}
 			return err
 		}
 		switch token.(type) {
 		case xml.StartElement:
+			foundContent = true
 			tok := token.(xml.StartElement)
 			switch tok.Name.Local {
 			default:

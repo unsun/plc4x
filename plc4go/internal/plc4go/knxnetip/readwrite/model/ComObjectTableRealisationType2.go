@@ -89,7 +89,11 @@ func (m *ComObjectTableRealisationType2) GetTypeName() string {
 }
 
 func (m *ComObjectTableRealisationType2) LengthInBits() uint16 {
-	lengthInBits := uint16(0)
+	return m.LengthInBitsConditional(false)
+}
+
+func (m *ComObjectTableRealisationType2) LengthInBitsConditional(lastItem bool) uint16 {
+	lengthInBits := uint16(m.Parent.ParentLengthInBits())
 
 	// Simple field (numEntries)
 	lengthInBits += 8
@@ -99,8 +103,9 @@ func (m *ComObjectTableRealisationType2) LengthInBits() uint16 {
 
 	// Array field
 	if len(m.ComObjectDescriptors) > 0 {
-		for _, element := range m.ComObjectDescriptors {
-			lengthInBits += element.LengthInBits()
+		for i, element := range m.ComObjectDescriptors {
+			last := i == len(m.ComObjectDescriptors)-1
+			lengthInBits += element.LengthInBitsConditional(last)
 		}
 	}
 
@@ -182,10 +187,12 @@ func (m *ComObjectTableRealisationType2) Serialize(io utils.WriteBuffer) error {
 func (m *ComObjectTableRealisationType2) UnmarshalXML(d *xml.Decoder, start xml.StartElement) error {
 	var token xml.Token
 	var err error
+	foundContent := false
 	token = start
 	for {
 		switch token.(type) {
 		case xml.StartElement:
+			foundContent = true
 			tok := token.(xml.StartElement)
 			switch tok.Name.Local {
 			case "numEntries":
@@ -210,7 +217,7 @@ func (m *ComObjectTableRealisationType2) UnmarshalXML(d *xml.Decoder, start xml.
 		}
 		token, err = d.Token()
 		if err != nil {
-			if err == io.EOF {
+			if err == io.EOF && foundContent {
 				return nil
 			}
 			return err
@@ -225,25 +232,16 @@ func (m *ComObjectTableRealisationType2) MarshalXML(e *xml.Encoder, start xml.St
 	if err := e.EncodeElement(m.RamFlagsTablePointer, xml.StartElement{Name: xml.Name{Local: "ramFlagsTablePointer"}}); err != nil {
 		return err
 	}
-	if len(m.ComObjectDescriptors) <= 0 {
-		// On empty lists be produce empty tokens
-		if err := e.EncodeToken(xml.StartElement{Name: xml.Name{Local: "comObjectDescriptors"}}); err != nil {
-			return err
-		}
-		if err := e.EncodeToken(xml.EndElement{Name: xml.Name{Local: "comObjectDescriptors"}}); err != nil {
-			return err
-		}
+	if err := e.EncodeToken(xml.StartElement{Name: xml.Name{Local: "comObjectDescriptors"}}); err != nil {
+		return err
 	}
 	for _, arrayElement := range m.ComObjectDescriptors {
-		if err := e.EncodeToken(xml.StartElement{Name: xml.Name{Local: "comObjectDescriptors"}}); err != nil {
-			return err
-		}
 		if err := e.EncodeElement(arrayElement, xml.StartElement{Name: xml.Name{Local: "comObjectDescriptors"}}); err != nil {
 			return err
 		}
-		if err := e.EncodeToken(xml.EndElement{Name: xml.Name{Local: "comObjectDescriptors"}}); err != nil {
-			return err
-		}
+	}
+	if err := e.EncodeToken(xml.EndElement{Name: xml.Name{Local: "comObjectDescriptors"}}); err != nil {
+		return err
 	}
 	return nil
 }

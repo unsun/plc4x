@@ -93,7 +93,11 @@ func (m *S7PayloadUserDataItemCpuFunctionReadSzlResponse) GetTypeName() string {
 }
 
 func (m *S7PayloadUserDataItemCpuFunctionReadSzlResponse) LengthInBits() uint16 {
-	lengthInBits := uint16(0)
+	return m.LengthInBitsConditional(false)
+}
+
+func (m *S7PayloadUserDataItemCpuFunctionReadSzlResponse) LengthInBitsConditional(lastItem bool) uint16 {
+	lengthInBits := uint16(m.Parent.ParentLengthInBits())
 
 	// Const Field (szlItemLength)
 	lengthInBits += 16
@@ -103,8 +107,9 @@ func (m *S7PayloadUserDataItemCpuFunctionReadSzlResponse) LengthInBits() uint16 
 
 	// Array field
 	if len(m.Items) > 0 {
-		for _, element := range m.Items {
-			lengthInBits += element.LengthInBits()
+		for i, element := range m.Items {
+			last := i == len(m.Items)-1
+			lengthInBits += element.LengthInBitsConditional(last)
 		}
 	}
 
@@ -187,10 +192,12 @@ func (m *S7PayloadUserDataItemCpuFunctionReadSzlResponse) Serialize(io utils.Wri
 func (m *S7PayloadUserDataItemCpuFunctionReadSzlResponse) UnmarshalXML(d *xml.Decoder, start xml.StartElement) error {
 	var token xml.Token
 	var err error
+	foundContent := false
 	token = start
 	for {
 		switch token.(type) {
 		case xml.StartElement:
+			foundContent = true
 			tok := token.(xml.StartElement)
 			switch tok.Name.Local {
 			case "items":
@@ -203,7 +210,7 @@ func (m *S7PayloadUserDataItemCpuFunctionReadSzlResponse) UnmarshalXML(d *xml.De
 		}
 		token, err = d.Token()
 		if err != nil {
-			if err == io.EOF {
+			if err == io.EOF && foundContent {
 				return nil
 			}
 			return err
@@ -212,25 +219,16 @@ func (m *S7PayloadUserDataItemCpuFunctionReadSzlResponse) UnmarshalXML(d *xml.De
 }
 
 func (m *S7PayloadUserDataItemCpuFunctionReadSzlResponse) MarshalXML(e *xml.Encoder, start xml.StartElement) error {
-	if len(m.Items) <= 0 {
-		// On empty lists be produce empty tokens
-		if err := e.EncodeToken(xml.StartElement{Name: xml.Name{Local: "items"}}); err != nil {
-			return err
-		}
-		if err := e.EncodeToken(xml.EndElement{Name: xml.Name{Local: "items"}}); err != nil {
-			return err
-		}
+	if err := e.EncodeToken(xml.StartElement{Name: xml.Name{Local: "items"}}); err != nil {
+		return err
 	}
 	for _, arrayElement := range m.Items {
-		if err := e.EncodeToken(xml.StartElement{Name: xml.Name{Local: "items"}}); err != nil {
-			return err
-		}
 		if err := e.EncodeElement(arrayElement, xml.StartElement{Name: xml.Name{Local: "items"}}); err != nil {
 			return err
 		}
-		if err := e.EncodeToken(xml.EndElement{Name: xml.Name{Local: "items"}}); err != nil {
-			return err
-		}
+	}
+	if err := e.EncodeToken(xml.EndElement{Name: xml.Name{Local: "items"}}); err != nil {
+		return err
 	}
 	return nil
 }

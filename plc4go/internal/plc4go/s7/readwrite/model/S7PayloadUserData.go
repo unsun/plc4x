@@ -89,12 +89,17 @@ func (m *S7PayloadUserData) GetTypeName() string {
 }
 
 func (m *S7PayloadUserData) LengthInBits() uint16 {
-	lengthInBits := uint16(0)
+	return m.LengthInBitsConditional(false)
+}
+
+func (m *S7PayloadUserData) LengthInBitsConditional(lastItem bool) uint16 {
+	lengthInBits := uint16(m.Parent.ParentLengthInBits())
 
 	// Array field
 	if len(m.Items) > 0 {
-		for _, element := range m.Items {
-			lengthInBits += element.LengthInBits()
+		for i, element := range m.Items {
+			last := i == len(m.Items)-1
+			lengthInBits += element.LengthInBitsConditional(last)
 		}
 	}
 
@@ -111,7 +116,7 @@ func S7PayloadUserDataParse(io *utils.ReadBuffer, parameter *S7Parameter) (*S7Pa
 	// Count array
 	items := make([]*S7PayloadUserDataItem, uint16(len(CastS7ParameterUserData(parameter).Items)))
 	for curItem := uint16(0); curItem < uint16(uint16(len(CastS7ParameterUserData(parameter).Items))); curItem++ {
-		_item, _err := S7PayloadUserDataItemParse(io, CastS7ParameterUserDataItemCPUFunctions(CastS7ParameterUserData(parameter).Items).CpuFunctionType)
+		_item, _err := S7PayloadUserDataItemParse(io, CastS7ParameterUserDataItemCPUFunctions(CastS7ParameterUserData(parameter).Items[0]).CpuFunctionType)
 		if _err != nil {
 			return nil, errors.Wrap(_err, "Error parsing 'items' field")
 		}
@@ -148,10 +153,12 @@ func (m *S7PayloadUserData) Serialize(io utils.WriteBuffer) error {
 func (m *S7PayloadUserData) UnmarshalXML(d *xml.Decoder, start xml.StartElement) error {
 	var token xml.Token
 	var err error
+	foundContent := false
 	token = start
 	for {
 		switch token.(type) {
 		case xml.StartElement:
+			foundContent = true
 			tok := token.(xml.StartElement)
 			switch tok.Name.Local {
 			case "items":
@@ -174,7 +181,7 @@ func (m *S7PayloadUserData) UnmarshalXML(d *xml.Decoder, start xml.StartElement)
 		}
 		token, err = d.Token()
 		if err != nil {
-			if err == io.EOF {
+			if err == io.EOF && foundContent {
 				return nil
 			}
 			return err
@@ -183,25 +190,16 @@ func (m *S7PayloadUserData) UnmarshalXML(d *xml.Decoder, start xml.StartElement)
 }
 
 func (m *S7PayloadUserData) MarshalXML(e *xml.Encoder, start xml.StartElement) error {
-	if len(m.Items) <= 0 {
-		// On empty lists be produce empty tokens
-		if err := e.EncodeToken(xml.StartElement{Name: xml.Name{Local: "items"}}); err != nil {
-			return err
-		}
-		if err := e.EncodeToken(xml.EndElement{Name: xml.Name{Local: "items"}}); err != nil {
-			return err
-		}
+	if err := e.EncodeToken(xml.StartElement{Name: xml.Name{Local: "items"}}); err != nil {
+		return err
 	}
 	for _, arrayElement := range m.Items {
-		if err := e.EncodeToken(xml.StartElement{Name: xml.Name{Local: "items"}}); err != nil {
-			return err
-		}
 		if err := e.EncodeElement(arrayElement, xml.StartElement{Name: xml.Name{Local: "items"}}); err != nil {
 			return err
 		}
-		if err := e.EncodeToken(xml.EndElement{Name: xml.Name{Local: "items"}}); err != nil {
-			return err
-		}
+	}
+	if err := e.EncodeToken(xml.EndElement{Name: xml.Name{Local: "items"}}); err != nil {
+		return err
 	}
 	return nil
 }

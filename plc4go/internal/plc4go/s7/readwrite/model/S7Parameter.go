@@ -79,12 +79,17 @@ func (m *S7Parameter) GetTypeName() string {
 }
 
 func (m *S7Parameter) LengthInBits() uint16 {
+	return m.LengthInBitsConditional(false)
+}
+
+func (m *S7Parameter) LengthInBitsConditional(lastItem bool) uint16 {
+	return m.Child.LengthInBits()
+}
+
+func (m *S7Parameter) ParentLengthInBits() uint16 {
 	lengthInBits := uint16(0)
 	// Discriminator Field (parameterType)
 	lengthInBits += 8
-
-	// Length of sub-type elements will be added by sub-type...
-	lengthInBits += m.Child.LengthInBits()
 
 	return lengthInBits
 }
@@ -117,6 +122,9 @@ func S7ParameterParse(io *utils.ReadBuffer, messageType uint8) (*S7Parameter, er
 		_parent, typeSwitchError = S7ParameterWriteVarResponseParse(io)
 	case parameterType == 0x00 && messageType == 0x07: // S7ParameterUserData
 		_parent, typeSwitchError = S7ParameterUserDataParse(io)
+	default:
+		// TODO: return actual type
+		typeSwitchError = errors.New("Unmapped type")
 	}
 	if typeSwitchError != nil {
 		return nil, errors.Wrap(typeSwitchError, "Error parsing sub-type for type-switch.")
@@ -153,16 +161,22 @@ func (m *S7Parameter) SerializeParent(io utils.WriteBuffer, child IS7Parameter, 
 func (m *S7Parameter) UnmarshalXML(d *xml.Decoder, start xml.StartElement) error {
 	var token xml.Token
 	var err error
+	foundContent := false
+	if start.Attr != nil && len(start.Attr) > 0 {
+		switch start.Attr[0].Value {
+		}
+	}
 	for {
 		token, err = d.Token()
 		if err != nil {
-			if err == io.EOF {
+			if err == io.EOF && foundContent {
 				return nil
 			}
 			return err
 		}
 		switch token.(type) {
 		case xml.StartElement:
+			foundContent = true
 			tok := token.(xml.StartElement)
 			switch tok.Name.Local {
 			default:

@@ -78,12 +78,17 @@ func (m *ApduControl) GetTypeName() string {
 }
 
 func (m *ApduControl) LengthInBits() uint16 {
+	return m.LengthInBitsConditional(false)
+}
+
+func (m *ApduControl) LengthInBitsConditional(lastItem bool) uint16 {
+	return m.Child.LengthInBits()
+}
+
+func (m *ApduControl) ParentLengthInBits() uint16 {
 	lengthInBits := uint16(0)
 	// Discriminator Field (controlType)
 	lengthInBits += 2
-
-	// Length of sub-type elements will be added by sub-type...
-	lengthInBits += m.Child.LengthInBits()
 
 	return lengthInBits
 }
@@ -112,6 +117,9 @@ func ApduControlParse(io *utils.ReadBuffer) (*ApduControl, error) {
 		_parent, typeSwitchError = ApduControlAckParse(io)
 	case controlType == 0x3: // ApduControlNack
 		_parent, typeSwitchError = ApduControlNackParse(io)
+	default:
+		// TODO: return actual type
+		typeSwitchError = errors.New("Unmapped type")
 	}
 	if typeSwitchError != nil {
 		return nil, errors.Wrap(typeSwitchError, "Error parsing sub-type for type-switch.")
@@ -148,16 +156,50 @@ func (m *ApduControl) SerializeParent(io utils.WriteBuffer, child IApduControl, 
 func (m *ApduControl) UnmarshalXML(d *xml.Decoder, start xml.StartElement) error {
 	var token xml.Token
 	var err error
+	foundContent := false
+	if start.Attr != nil && len(start.Attr) > 0 {
+		switch start.Attr[0].Value {
+		// ApduControlConnect needs special treatment as it has no fields
+		case "org.apache.plc4x.java.knxnetip.readwrite.ApduControlConnect":
+			if m.Child == nil {
+				m.Child = &ApduControlConnect{
+					Parent: m,
+				}
+			}
+		// ApduControlDisconnect needs special treatment as it has no fields
+		case "org.apache.plc4x.java.knxnetip.readwrite.ApduControlDisconnect":
+			if m.Child == nil {
+				m.Child = &ApduControlDisconnect{
+					Parent: m,
+				}
+			}
+		// ApduControlAck needs special treatment as it has no fields
+		case "org.apache.plc4x.java.knxnetip.readwrite.ApduControlAck":
+			if m.Child == nil {
+				m.Child = &ApduControlAck{
+					Parent: m,
+				}
+			}
+		// ApduControlNack needs special treatment as it has no fields
+		case "org.apache.plc4x.java.knxnetip.readwrite.ApduControlNack":
+			if m.Child == nil {
+				m.Child = &ApduControlNack{
+					Parent: m,
+				}
+			}
+		}
+	}
 	for {
 		token, err = d.Token()
 		if err != nil {
-			if err == io.EOF {
+			if err == io.EOF && foundContent {
 				return nil
 			}
 			return err
 		}
 		switch token.(type) {
 		case xml.StartElement:
+			foundContent = true
 			tok := token.(xml.StartElement)
 			switch tok.Name.Local {
 			default:

@@ -78,12 +78,17 @@ func (m *APDU) GetTypeName() string {
 }
 
 func (m *APDU) LengthInBits() uint16 {
+	return m.LengthInBitsConditional(false)
+}
+
+func (m *APDU) LengthInBitsConditional(lastItem bool) uint16 {
+	return m.Child.LengthInBits()
+}
+
+func (m *APDU) ParentLengthInBits() uint16 {
 	lengthInBits := uint16(0)
 	// Discriminator Field (apduType)
 	lengthInBits += 4
-
-	// Length of sub-type elements will be added by sub-type...
-	lengthInBits += m.Child.LengthInBits()
 
 	return lengthInBits
 }
@@ -120,6 +125,9 @@ func APDUParse(io *utils.ReadBuffer, apduLength uint16) (*APDU, error) {
 		_parent, typeSwitchError = APDURejectParse(io)
 	case apduType == 0x7: // APDUAbort
 		_parent, typeSwitchError = APDUAbortParse(io)
+	default:
+		// TODO: return actual type
+		typeSwitchError = errors.New("Unmapped type")
 	}
 	if typeSwitchError != nil {
 		return nil, errors.Wrap(typeSwitchError, "Error parsing sub-type for type-switch.")
@@ -156,16 +164,22 @@ func (m *APDU) SerializeParent(io utils.WriteBuffer, child IAPDU, serializeChild
 func (m *APDU) UnmarshalXML(d *xml.Decoder, start xml.StartElement) error {
 	var token xml.Token
 	var err error
+	foundContent := false
+	if start.Attr != nil && len(start.Attr) > 0 {
+		switch start.Attr[0].Value {
+		}
+	}
 	for {
 		token, err = d.Token()
 		if err != nil {
-			if err == io.EOF {
+			if err == io.EOF && foundContent {
 				return nil
 			}
 			return err
 		}
 		switch token.(type) {
 		case xml.StartElement:
+			foundContent = true
 			tok := token.(xml.StartElement)
 			switch tok.Name.Local {
 			default:

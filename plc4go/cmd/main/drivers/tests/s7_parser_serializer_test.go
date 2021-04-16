@@ -25,7 +25,5 @@ import (
 )
 
 func TestS7ParserSerializer(t *testing.T) {
-	// TODO: element order seems of
-	t.Skip("Still a work in progress")
 	testutils.RunParserSerializerTestsuite(t, "assets/testing/protocols/s7/ParserSerializerTestsuite.xml")
 }
