@@ -368,47 +368,53 @@
 ]
 
 [discriminatedType 'NodeIdTypeDefinition'
-    [abstract Object 'identifier']
-    [simple NodeIdType 'nodeType']
+    [abstract string '-1' 'identifier']
+    [discriminator NodeIdType 'nodeType']
     [typeSwitch 'nodeType'
         ['nodeIdTypeTwoByte' NodeIdTwoByte
             [simple uint 8 'namespaceIndex']
-            [simple uint 8 'identifier']
+            [simple uint 8 'id']
+            [virtual string '-1' 'identifier' 'id']
         ]
         ['nodeIdTypeFourByte' NodeIdFourByte
             [simple uint 8 'namespaceIndex']
-            [simple uint 16 'identifier']
+            [simple uint 16 'id']
+            [virtual string '-1' 'identifier' 'id']
         ]
         ['nodeIdTypeNumeric' NodeIdNumeric
             [simple uint 16 'namespaceIndex']
-            [simple uint 32 'identifier']
+            [simple uint 32 'id']
+            [virtual string '-1' 'identifier' 'id']
         ]
         ['nodeIdTypeString' NodeIdString
             [simple uint 16 'namespaceIndex']
-            [simple string '-1' 'identifier']
+            [simple string '-1' 'id']
+            [virtual string '-1' 'identifier' 'id']
         ]
         ['nodeIdTypeGuid' NodeIdGuid
             [simple uint 16 'namespaceIndex']
-            [simple string '-1' 'identifier']
+            [simple string '-1' 'id']
+            [virtual string '-1' 'identifier' 'id']
         ]
         ['nodeIdTypeByteString' NodeIdByteString
             [simple uint 16 'namespaceIndex']
-            [simple uint 32 'identifier']
+            [simple uint 32 'id']
+            [virtual string '-1' 'identifier' 'id']
         ]
     ]
 ]
 
 [type 'NodeId'
     [reserved int 2 '0x00']
-    [virtual string '-1' 'id' 'nodeId.identifier.toString']
     [simple NodeIdTypeDefinition 'nodeId']
+    [virtual string '-1' 'id' 'nodeId.identifier']
 ]
 
 [type 'ExpandedNodeId'
     [simple bit 'namespaceURISpecified']
     [simple bit 'serverIndexSpecified']
-    [virtual string '-1' 'utf-8' 'identifier' 'nodeId.identifier.toString']
     [simple NodeIdTypeDefinition 'nodeId']
+    [virtual string '-1' 'utf-8' 'identifier' 'nodeId.identifier']
     [optional PascalString 'namespaceURI' 'namespaceURISpecified']
     [optional uint 32 'serverIndex' 'serverIndexSpecified']
 ]
