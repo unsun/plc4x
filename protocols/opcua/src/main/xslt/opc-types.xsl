@@ -19,7 +19,10 @@
 -->
 <xsl:stylesheet version="2.0"
                 xmlns:xsl="http://www.w3.org/1999/XSL/Transform"
+                xmlns:xs="http://www.w3.org/2001/XMLSchema"
                 xmlns:opc="http://opcfoundation.org/BinarySchema/"
+                xmlns:plc4x="https://plc4x.apache.org/"
+                xmlns:map="http://www.w3.org/2005/xpath-functions/map"
                 xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
                 xmlns:ua="http://opcfoundation.org/UA/"
                 xmlns:tns="http://opcfoundation.org/UA/"
@@ -36,6 +39,23 @@
     <xsl:param name="servicesEnum"></xsl:param>
 
     <xsl:variable name="originaldoc" select="/"/>
+
+    <xsl:variable name="dataTypeLength" as="map(xs:string, xs:int)">
+        <xsl:map>
+            <xsl:for-each select="//opc:EnumeratedType">
+                <xsl:choose>
+                    <xsl:when test="@Name != '' or @LengthInBits != ''">
+                        <xsl:map-entry key="concat('ua:', xs:string(@Name))" select="xs:int(@LengthInBits)"/>
+                    </xsl:when>
+                </xsl:choose>
+            </xsl:for-each>
+        </xsl:map>
+    </xsl:variable>
+
+    <xsl:variable name="bitBuffer" as="map(xs:string, xs:int)">
+        <xsl:map>
+        </xsl:map>
+    </xsl:variable>
 
     <xsl:param name="file" select="document($services)"/>
     <xsl:param name="statusCodeFile" select="unparsed-text($statusCodes)"/>
@@ -104,6 +124,7 @@
         <xsl:apply-templates select="$file/node:UANodeSet/node:UADataType[@BrowseName='CloseSecureChannelResponse']"/>
     ]
 ]
+
 
 [type 'RequestHeader'
     <xsl:apply-templates select="/opc:TypeDictionary/opc:StructuredType[@Name='RequestHeader']"/>
@@ -419,6 +440,10 @@
     [optional uint 32 'serverIndex' 'serverIndexSpecified']
 ]
 
+[type 'ExpandedNodeId'
+    <xsl:apply-templates select="/opc:TypeDictionary/opc:StructuredType[@Name='ExpandedNodeId']"/>
+]
+
 [discriminatedType 'ExtensionObject'
     //A serialized object prefixed with its data type identifier.
     [simple ExpandedNodeId 'nodeId']
@@ -434,8 +459,9 @@
 ]
 
 [type 'PascalString'
-    [simple int 32 'stringLength']
-    [optional string 'stringLength == -1 ? 0 : stringLength * 8' 'UTF-8' 'stringValue' 'stringLength >= 0']
+    [implicit int 32 'sLength'          'stringValue.length == 0 ? -1 : stringValue.length']
+    [virtual  int 32 'stringLength'     'stringValue.length == -1 ? 0 : stringValue.length']
+    [simple string 'stringLength * 8' 'UTF-8' 'stringValue']
 ]
 
 [type 'PascalByteString'
@@ -547,6 +573,7 @@
     </xsl:template>
 
     <xsl:template match="opc:EnumeratedType">
+        <xsl:message>[INFO] Parsing Enumerated Datatype - <xsl:value-of select="@Name"/></xsl:message>
         <xsl:apply-templates select="opc:Documentation"/>
         <xsl:apply-templates select="opc:EnumeratedValue"/>
     </xsl:template>
@@ -556,6 +583,7 @@
     </xsl:template>
 
     <xsl:template match="opc:EnumeratedValue">
+        <xsl:message>[INFO] Parsing Enumerated Value - <xsl:value-of select="@Name"/></xsl:message>
         <xsl:variable name="objectTypeId">
             <xsl:call-template name="clean-id-string">
                 <xsl:with-param name="text" select="@Name"/>
@@ -566,6 +594,7 @@
     </xsl:template>
 
     <xsl:template match="opc:OpaqueType[not(@Name = 'Duration')]">
+        <xsl:message>[INFO] Parsing Opaque Datatype - <xsl:value-of select="@Name"/></xsl:message>
         <xsl:variable name="objectTypeId">
             <xsl:call-template name="clean-id-string">
                 <xsl:with-param name="text" select="@Name"/>
@@ -578,6 +607,7 @@
     </xsl:template>
 
     <xsl:template match="opc:StructuredType[not(@Name = 'Vector')]">
+        <xsl:message>[INFO] Parsing Structured Datatype - <xsl:value-of select="@Name"/></xsl:message>
         <xsl:variable name="objectTypeId">
             <xsl:call-template name="clean-id-string">
                 <xsl:with-param name="text" select="@Name"/>
@@ -586,10 +616,20 @@
             </xsl:call-template>
         </xsl:variable>
         <xsl:apply-templates select="opc:Documentation"/>
-        <xsl:apply-templates select="opc:Field"/>
+        <xsl:choose>
+            <xsl:when test="@Name = 'ExpandedNodeId'">
+                <xsl:call-template name="plc4x:parseFields">
+                    <xsl:with-param name="baseNode" select="."/>
+                    <xsl:with-param name="currentNodePosition">1</xsl:with-param>
+                    <xsl:with-param name="currentBytePosition">0</xsl:with-param>
+                    <xsl:with-param name="currentBitPosition">0</xsl:with-param>
+                </xsl:call-template>
+            </xsl:when>
+        </xsl:choose>
     </xsl:template>
 
     <xsl:template match="opc:Field">
+        <xsl:message>[INFO] Parsing Field - <xsl:value-of select="@Name"/></xsl:message>
         <xsl:variable name="objectTypeId">
             <xsl:value-of select="@Name"/>
         </xsl:variable>
@@ -615,10 +655,12 @@
 
         <xsl:choose>
             <xsl:when test="@LengthField">[array <xsl:value-of select="$dataType"/>  '<xsl:value-of select="$lowerCaseName"/>' count '<xsl:value-of select="$lowerCaseLengthField"/>']
-    </xsl:when>
+            </xsl:when>
             <xsl:otherwise>[<xsl:value-of select="$mspecType"/><xsl:text> </xsl:text><xsl:value-of select="$dataType"/> '<xsl:value-of select="$lowerCaseName"/>']
-    </xsl:otherwise>
+            </xsl:otherwise>
         </xsl:choose>
+
+
     </xsl:template>
 
     <xsl:template name="clean-id-string">
@@ -692,4 +734,112 @@
 ]
     </xsl:template>
 
+    <!-- Gets the length in bits of a data type -->
+    <xsl:function name="plc4x:getDataTypeLength" as="xs:integer">
+        <xsl:param name="lengthMap" as="map(xs:string, xs:int)"/>
+        <xsl:param name="datatype"/>
+        <xsl:message>[DEBUG] Getting length of Data Type</xsl:message>
+        <xsl:message>[DEBUG] Data type <xsl:value-of select="xs:string($datatype/[@TypeName])"/></xsl:message>
+        <xsl:choose>
+            <xsl:when test="map:contains($lengthMap, xs:string($datatype/[@TypeName]))">
+                <xsl:message>[DEBUG] Bit Length <xsl:value-of select="$lengthMap(xs:string($datatype/[@TypeName]))"/></xsl:message>
+                <xsl:value-of select="map:get($lengthMap, xs:string($datatype/[@TypeName]))"/>
+            </xsl:when>
+            <xsl:when test="$datatype/[@TypeName] = 'opc:Bit'">
+                <xsl:choose>
+                    <xsl:when test="$datatype/[@Length] != ''">
+                        <xsl:value-of select="xs:int($datatype/[@Length])"/>
+                    </xsl:when>
+                    <xsl:otherwise>1</xsl:otherwise>
+                </xsl:choose>
+            </xsl:when>
+            <xsl:otherwise>8</xsl:otherwise>
+        </xsl:choose>
+    </xsl:function>
+
+    <!-- Parse the fields for each type, rearranging all of the bit based fields -->
+    <xsl:template name="plc4x:parseFields">
+        <xsl:param name="baseNode"/>
+        <xsl:param name="currentNodePosition" as="xs:int"/>
+        <xsl:param name="currentBitPosition" as="xs:int"/>
+        <xsl:param name="currentBytePosition" as="xs:int"/>
+        <xsl:message>Current node Position - <xsl:value-of select="$currentNodePosition"/>, Bit Position - <xsl:value-of select="$currentBitPosition"/>, Byte Position - <xsl:value-of select="$currentBytePosition"/></xsl:message>
+
+        <xsl:for-each select="$baseNode/opc:Field">
+            <xsl:message><xsl:value-of select="position()"/> - <xsl:value-of select="@TypeName"/></xsl:message>
+        </xsl:for-each>
+        <xsl:choose>
+            <xsl:when test="$currentNodePosition = count($baseNode/opc:Field)">
+                <xsl:apply-templates select="$baseNode/opc:Field"/>
+            </xsl:when>
+            <xsl:otherwise>
+                <xsl:for-each select="($baseNode/opc:Field)[$currentNodePosition]">
+                    <xsl:message><xsl:value-of select="position()"/> - <xsl:value-of select="@TypeName"/></xsl:message>
+                </xsl:for-each>
+                <xsl:choose>
+                    <xsl:when test="plc4x:getDataTypeLength($dataTypeLength, $baseNode/opc:Field[$currentNodePosition][@TypeName]) lt 8">
+                        <xsl:choose>
+                            <xsl:when test="$currentBitPosition=0">
+                                <!-- Put node into current position -->
+                                <xsl:message>[DEBUG] First Bit in Byte</xsl:message>
+                                <xsl:call-template name="plc4x:parseFields">
+                                    <xsl:with-param name="baseNode">
+                                        <xsl:copy-of select="$baseNode/opc:Field[position() lt $currentNodePosition]"/>
+                                        <xsl:copy-of select="$baseNode/opc:Field[position()=$currentNodePosition]"/>
+                                        <xsl:copy-of select="$baseNode/opc:Field[position() gt $currentNodePosition]"/>
+                                    </xsl:with-param>
+                                    <xsl:with-param name="currentNodePosition">
+                                        <xsl:value-of select="$currentNodePosition + 1"/>
+                                    </xsl:with-param>
+                                    <xsl:with-param name="currentBitPosition">
+                                        <xsl:value-of select="plc4x:getDataTypeLength($dataTypeLength, $baseNode/opc:Field[position() = $currentNodePosition][@TypeName]) + $currentBitPosition"/>
+                                    </xsl:with-param>
+                                    <xsl:with-param name="currentBytePosition">
+                                        <xsl:value-of select="$currentBytePosition + 1"/>
+                                    </xsl:with-param>
+                                </xsl:call-template>
+                            </xsl:when>
+                            <xsl:otherwise>
+                                <!-- Put node into correct position based on bit and byte position -->
+                                <xsl:message>[DEBUG] Additional Bit in Byte</xsl:message>
+                                <xsl:call-template name="plc4x:parseFields">
+                                    <xsl:with-param name="baseNode">
+                                        <xsl:copy-of select="$baseNode/opc:Field[position() lt ($currentNodePosition - $currentBytePosition)]"/>
+                                        <xsl:copy-of select="$baseNode/opc:Field[position()=$currentNodePosition]"/>
+                                        <xsl:copy-of select="$baseNode/opc:Field[(position() gt ($currentNodePosition - $currentBytePosition - 1)) and (position() lt ($currentNodePosition))]"/>
+                                        <xsl:copy-of select="$baseNode/opc:Field[position() gt $currentNodePosition]"/>
+                                    </xsl:with-param>
+                                    <xsl:with-param name="currentNodePosition">
+                                        <xsl:value-of select="$currentNodePosition + 1"/>
+                                    </xsl:with-param>
+                                    <xsl:with-param name="currentBitPosition">
+                                        <xsl:value-of select="plc4x:getDataTypeLength($dataTypeLength, $baseNode/opc:Field[position() = $currentNodePosition][@TypeName]) + $currentBitPosition"/>
+                                    </xsl:with-param>
+                                    <xsl:with-param name="currentBytePosition">
+                                        <xsl:value-of select="$currentBytePosition + 1"/>
+                                    </xsl:with-param>
+                                </xsl:call-template>
+                            </xsl:otherwise>
+                        </xsl:choose>
+                    </xsl:when>
+                    <xsl:otherwise>
+                        <!-- Put node into current position -->
+                        <xsl:message>[DEBUG] not a bit data type</xsl:message>
+                        <xsl:call-template name="plc4x:parseFields">
+                            <xsl:with-param name="baseNode">
+                                <xsl:copy-of select="$baseNode/opc:Field[position() lt $currentNodePosition]"/>
+                                <xsl:copy-of select="$baseNode/opc:Field[position()=$currentNodePosition]"/>
+                                <xsl:copy-of select="$baseNode/opc:Field[position() gt $currentNodePosition]"/>
+                            </xsl:with-param>
+                            <xsl:with-param name="currentNodePosition">
+                                <xsl:value-of select="$currentNodePosition + 1"/>
+                            </xsl:with-param>
+                            <xsl:with-param name="currentBitPosition">0</xsl:with-param>
+                            <xsl:with-param name="currentBytePosition">0</xsl:with-param>
+                        </xsl:call-template>
+                    </xsl:otherwise>
+                </xsl:choose>
+            </xsl:otherwise>
+        </xsl:choose>
+    </xsl:template>
 </xsl:stylesheet>

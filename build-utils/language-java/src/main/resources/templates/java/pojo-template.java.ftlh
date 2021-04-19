@@ -161,7 +161,6 @@ public<#if helper.isDiscriminatedParentTypeDefinition()> abstract</#if> class ${
     }
 
 </#list>
-
 <#list type.virtualFields as field>
     <#if !helper.isDiscriminatorField(field.name)>
     public ${helper.getLanguageTypeNameForField(field)}<#if field.loopType??>[]</#if> get${field.name?cap_first}() {

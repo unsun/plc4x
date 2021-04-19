@@ -23,6 +23,7 @@ import org.apache.plc4x.plugins.codegenerator.language.mspec.parser.MessageForma
 import org.apache.plc4x.plugins.codegenerator.protocol.Protocol;
 import org.apache.plc4x.plugins.codegenerator.types.definitions.TypeDefinition;
 import org.apache.plc4x.plugins.codegenerator.types.exceptions.GenerationException;
+import org.w3c.dom.NodeList;
 
 import java.io.InputStream;
 import java.util.LinkedHashMap;
@@ -54,5 +55,8 @@ public class OpcuaProtocol implements Protocol {
         typeDefinitionMap.putAll(new MessageFormatParser().parse(masterDataInputStream));
         return typeDefinitionMap;
     }
+
+
+
 
 }

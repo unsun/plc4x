@@ -61,6 +61,12 @@
           <version>0.9.0-SNAPSHOT</version>
           <scope>compile</scope>
       </dependency>
+    <dependency>
+      <groupId>net.sf.saxon</groupId>
+      <artifactId>Saxon-HE</artifactId>
+      <version>10.5</version>
+    </dependency>
+
   </dependencies>
 
 </project>

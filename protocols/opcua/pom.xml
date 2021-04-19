@@ -162,10 +162,16 @@
               </transformationSets>
             </configuration>
             <dependencies>
+              <!-- https://mvnrepository.com/artifact/net.sf.saxon/Saxon-HE -->
               <dependency>
                 <groupId>net.sf.saxon</groupId>
-                <artifactId>saxon</artifactId>
-                <version>8.7</version>
+                <artifactId>Saxon-HE</artifactId>
+                <version>10.5</version>
+              </dependency>
+              <dependency>
+                <groupId>org.apache.plc4x</groupId>
+                <artifactId>plc4x-build-utils-language-base-freemarker</artifactId>
+                <version>0.9.0-SNAPSHOT</version>
               </dependency>
             </dependencies>
           </plugin>

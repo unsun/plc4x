@@ -29,6 +29,7 @@ import org.apache.plc4x.plugins.codegenerator.types.references.SimpleTypeReferen
 import org.apache.plc4x.plugins.codegenerator.types.references.StringTypeReference;
 import org.apache.plc4x.plugins.codegenerator.types.references.TypeReference;
 import org.apache.plc4x.plugins.codegenerator.types.terms.*;
+import org.w3c.dom.Node;
 
 import java.util.*;
 import java.util.stream.Collectors;
@@ -986,6 +987,12 @@ public abstract class BaseFreemarkerLanguageTemplateHelper implements Freemarker
             }
         }
         return null;
+    }
+
+    public static String parseStructuredFields(Object nodeList) {
+        System.out.println((Node) nodeList);
+        System.out.println(nodeList.getClass().getName());
+        return "//Hello";
     }
 
 }
