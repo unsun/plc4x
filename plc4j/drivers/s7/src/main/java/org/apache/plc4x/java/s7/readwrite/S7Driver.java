@@ -32,6 +32,7 @@ import org.apache.plc4x.java.spi.connection.ProtocolStackConfigurer;
 import org.apache.plc4x.java.spi.connection.GeneratedDriverBase;
 import org.apache.plc4x.java.spi.connection.SingleProtocolStackConfigurer;
 import org.apache.plc4x.java.spi.optimizer.BaseOptimizer;
+import org.apache.plc4x.java.spi.transport.Transport;
 import org.apache.plc4x.java.spi.values.IEC61131ValueHandler;
 
 import java.util.function.Consumer;
@@ -96,8 +97,8 @@ public class S7Driver extends GeneratedDriverBase<TPKTPacket> {
     }
 
     @Override
-    protected ProtocolStackConfigurer<TPKTPacket> getStackConfigurer() {
-        return SingleProtocolStackConfigurer.builder(TPKTPacket.class, TPKTPacketIO.class)
+    protected ProtocolStackConfigurer<TPKTPacket> getStackConfigurer(Configuration configuration, Transport transport) {
+        return SingleProtocolStackConfigurer.builder(TPKTPacket.class, TPKTPacketIO.class, configuration)
             .withProtocol(S7ProtocolLogic.class)
             .withDriverContext(S7DriverContext.class)
             .withPacketSizeEstimator(ByteLengthEstimator.class)

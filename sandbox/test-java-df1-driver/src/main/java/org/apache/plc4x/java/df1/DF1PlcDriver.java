@@ -18,7 +18,6 @@
  */
 package org.apache.plc4x.java.df1;
 
-import org.apache.plc4x.java.api.PlcDriver;
 import org.apache.plc4x.java.api.value.PlcValueHandler;
 import org.apache.plc4x.java.df1.configuration.Df1Configuration;
 import org.apache.plc4x.java.df1.field.Df1FieldHandler;
@@ -29,6 +28,7 @@ import org.apache.plc4x.java.spi.configuration.Configuration;
 import org.apache.plc4x.java.spi.connection.GeneratedDriverBase;
 import org.apache.plc4x.java.spi.connection.ProtocolStackConfigurer;
 import org.apache.plc4x.java.spi.connection.SingleProtocolStackConfigurer;
+import org.apache.plc4x.java.spi.transport.Transport;
 import org.apache.plc4x.java.spi.values.IEC61131ValueHandler;
 
 public class DF1PlcDriver extends GeneratedDriverBase<DF1Command> {
@@ -64,8 +64,8 @@ public class DF1PlcDriver extends GeneratedDriverBase<DF1Command> {
     }
 
     @Override
-    protected ProtocolStackConfigurer<DF1Command> getStackConfigurer() {
-        return SingleProtocolStackConfigurer.builder(DF1Command.class, DF1CommandIO.class)
+    protected ProtocolStackConfigurer<DF1Command> getStackConfigurer(Configuration configuration, Transport transport) {
+        return SingleProtocolStackConfigurer.builder(DF1Command.class, DF1CommandIO.class, configuration)
             .withProtocol(Df1ProtocolLogic.class)
             .build();
     }

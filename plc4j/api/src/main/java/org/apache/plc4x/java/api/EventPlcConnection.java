@@ -16,18 +16,19 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+package org.apache.plc4x.java.api;
 
-package org.apache.plc4x.java.spi.connection;
-
-import io.netty.channel.ChannelPipeline;
 import org.apache.plc4x.java.api.listener.EventListener;
-import org.apache.plc4x.java.spi.Plc4xProtocolBase;
-import org.apache.plc4x.java.spi.generation.Message;
 
-import java.util.List;
+/**
+ * An extended kind of connection which can broadcast events.
+ *
+ * Particular type of event might vary, it might be a connection state or message exchange.
+ */
+public interface EventPlcConnection extends PlcConnection {
 
-public interface ProtocolStackConfigurer<T extends Message> {
+    void addEventListener(EventListener listener);
 
-    Plc4xProtocolBase<T> configurePipeline(ChannelPipeline pipeline, boolean passive, List<EventListener> listeners);
+    void removeEventListener(EventListener listener);
 
 }

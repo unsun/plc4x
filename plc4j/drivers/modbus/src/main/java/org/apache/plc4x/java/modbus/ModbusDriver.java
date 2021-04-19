@@ -25,6 +25,7 @@ import org.apache.plc4x.java.modbus.field.ModbusFieldHandler;
 import org.apache.plc4x.java.modbus.protocol.ModbusProtocolLogic;
 import org.apache.plc4x.java.modbus.readwrite.ModbusTcpADU;
 import org.apache.plc4x.java.modbus.readwrite.io.ModbusTcpADUIO;
+import org.apache.plc4x.java.spi.transport.Transport;
 import org.apache.plc4x.java.spi.values.IEC61131ValueHandler;
 import org.apache.plc4x.java.api.value.PlcValueHandler;
 import org.apache.plc4x.java.spi.configuration.Configuration;
@@ -102,8 +103,8 @@ public class ModbusDriver extends GeneratedDriverBase<ModbusTcpADU> {
     }
 
     @Override
-    protected ProtocolStackConfigurer<ModbusTcpADU> getStackConfigurer() {
-        return SingleProtocolStackConfigurer.builder(ModbusTcpADU.class, ModbusTcpADUIO.class)
+    protected ProtocolStackConfigurer<ModbusTcpADU> getStackConfigurer(Configuration configuration, Transport transport) {
+        return SingleProtocolStackConfigurer.builder(ModbusTcpADU.class, ModbusTcpADUIO.class, configuration)
             .withProtocol(ModbusProtocolLogic.class)
             .withPacketSizeEstimator(ByteLengthEstimator.class)
             // Every incoming message is to be treated as a response.

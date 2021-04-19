@@ -27,6 +27,7 @@ import org.apache.plc4x.java.knxnetip.readwrite.io.KnxNetIpMessageIO;
 import org.apache.plc4x.java.spi.configuration.Configuration;
 import org.apache.plc4x.java.knxnetip.field.KnxNetIpFieldHandler;
 import org.apache.plc4x.java.knxnetip.protocol.KnxNetIpProtocolLogic;
+import org.apache.plc4x.java.spi.transport.Transport;
 import org.apache.plc4x.java.spi.values.IEC61131ValueHandler;
 import org.apache.plc4x.java.api.value.PlcValueHandler;
 import org.apache.plc4x.java.spi.connection.GeneratedDriverBase;
@@ -96,8 +97,8 @@ public class KnxNetIpDriver extends GeneratedDriverBase<KnxNetIpMessage> {
     protected boolean awaitDisconnectComplete() { return true; }
 
     @Override
-    protected ProtocolStackConfigurer<KnxNetIpMessage> getStackConfigurer() {
-        return SingleProtocolStackConfigurer.builder(KnxNetIpMessage.class, KnxNetIpMessageIO.class)
+    protected ProtocolStackConfigurer<KnxNetIpMessage> getStackConfigurer(Configuration configuration, Transport transport) {
+        return SingleProtocolStackConfigurer.builder(KnxNetIpMessage.class, KnxNetIpMessageIO.class, configuration)
             .withProtocol(KnxNetIpProtocolLogic.class)
             .withDriverContext(KnxNetIpDriverContext.class)
             .withPacketSizeEstimator(PacketSizeEstimator.class)

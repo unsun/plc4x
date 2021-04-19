@@ -19,7 +19,6 @@ under the License.
 package org.apache.plc4x.java.bacnetip;
 
 import io.netty.buffer.ByteBuf;
-import org.apache.plc4x.java.api.PlcDriver;
 import org.apache.plc4x.java.api.value.PlcValueHandler;
 import org.apache.plc4x.java.bacnetip.configuration.BacNetIpConfiguration;
 import org.apache.plc4x.java.bacnetip.field.BacNetIpFieldHandler;
@@ -30,6 +29,7 @@ import org.apache.plc4x.java.spi.configuration.Configuration;
 import org.apache.plc4x.java.spi.connection.GeneratedDriverBase;
 import org.apache.plc4x.java.spi.connection.ProtocolStackConfigurer;
 import org.apache.plc4x.java.spi.connection.SingleProtocolStackConfigurer;
+import org.apache.plc4x.java.spi.transport.Transport;
 import org.apache.plc4x.java.spi.values.IEC61131ValueHandler;
 
 import java.util.function.Consumer;
@@ -85,8 +85,8 @@ public class BacNetIpDriver extends GeneratedDriverBase<BVLC> {
     }
 
     @Override
-    protected ProtocolStackConfigurer<BVLC> getStackConfigurer() {
-        return SingleProtocolStackConfigurer.builder(BVLC.class, BVLCIO.class)
+    protected ProtocolStackConfigurer<BVLC> getStackConfigurer(Configuration configuration, Transport transport) {
+        return SingleProtocolStackConfigurer.builder(BVLC.class, BVLCIO.class, configuration)
             .withProtocol(BacNetIpProtocolLogic.class)
             .withPacketSizeEstimator(ByteLengthEstimator.class)
             .withCorruptPacketRemover(CorruptPackageCleaner.class)

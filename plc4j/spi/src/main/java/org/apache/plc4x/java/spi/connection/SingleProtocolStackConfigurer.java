@@ -25,15 +25,20 @@ import io.netty.buffer.ByteBuf;
 import io.netty.channel.ChannelHandler;
 import io.netty.channel.ChannelPipeline;
 import org.apache.plc4x.java.api.exceptions.PlcRuntimeException;
+import org.apache.plc4x.java.api.listener.EventListener;
+import org.apache.plc4x.java.spi.EventListenerMessageCodec;
 import org.apache.plc4x.java.spi.Plc4xNettyWrapper;
 import org.apache.plc4x.java.spi.Plc4xProtocolBase;
 import org.apache.plc4x.java.spi.configuration.Configuration;
 import org.apache.plc4x.java.spi.context.DriverContext;
+import org.apache.plc4x.java.spi.context.ToolingContext;
 import org.apache.plc4x.java.spi.generation.Message;
 import org.apache.plc4x.java.spi.generation.MessageIO;
 
 import java.lang.reflect.InvocationTargetException;
+import java.util.List;
 import java.util.function.Consumer;
+import java.util.function.Supplier;
 import java.util.function.ToIntFunction;
 
 /**
@@ -42,67 +47,55 @@ import java.util.function.ToIntFunction;
 public class SingleProtocolStackConfigurer<BASE_PACKET_CLASS extends Message> implements ProtocolStackConfigurer<BASE_PACKET_CLASS> {
 
     private final Class<BASE_PACKET_CLASS> basePacketClass;
-    private boolean bigEndian = true;
-    private final Class<? extends Plc4xProtocolBase<BASE_PACKET_CLASS>> protocolClass;
-    private final Class<? extends DriverContext> driverContextClass;
+    private final boolean bigEndian;
+    private final Supplier<? extends Plc4xProtocolBase<BASE_PACKET_CLASS>> protocolSupplier;
+    private final Supplier<? extends DriverContext> driverContextSupplier;
     private final MessageIO<BASE_PACKET_CLASS, BASE_PACKET_CLASS> protocolIO;
-    private final Class<? extends ToIntFunction<ByteBuf>> packetSizeEstimatorClass;
-    private final Class<? extends Consumer<ByteBuf>> corruptPacketRemoverClass;
+    private final Supplier<? extends ToIntFunction<ByteBuf>> packetSizeEstimatorSupplier;
+    private final Supplier<? extends Consumer<ByteBuf>> corruptPacketRemoverSupplier;
     private final Object[] parserArgs;
 
-    public static <BPC extends Message> SingleProtocolStackBuilder<BPC> builder(Class<BPC> basePacketClass, Class<? extends MessageIO<BPC, BPC>> messageIoClass) {
-        return new SingleProtocolStackBuilder<>(basePacketClass, messageIoClass);
+    public static <BPC extends Message> SingleProtocolStackBuilder<BPC> builder(Class<BPC> basePacketClass, Class<? extends MessageIO<BPC, BPC>> messageIoClass, Configuration configuration) {
+        return new SingleProtocolStackBuilder<>(basePacketClass, messageIoClass, configuration);
     }
 
     /** Only accessible via Builder */
     SingleProtocolStackConfigurer(Class<BASE_PACKET_CLASS> basePacketClass,
                                   boolean bigEndian,
                                   Object[] parserArgs,
-                                  Class<? extends Plc4xProtocolBase<BASE_PACKET_CLASS>> protocol,
-                                  Class<? extends DriverContext> driverContextClass,
+                                  Supplier<? extends Plc4xProtocolBase<BASE_PACKET_CLASS>> protocolSupplier,
+                                  Supplier<? extends DriverContext> driverContextSupplier,
                                   MessageIO<BASE_PACKET_CLASS, BASE_PACKET_CLASS> protocolIO,
-                                  Class<? extends ToIntFunction<ByteBuf>> packetSizeEstimatorClass,
-                                  Class<? extends Consumer<ByteBuf>> corruptPacketRemoverClass) {
+                                  Supplier<? extends ToIntFunction<ByteBuf>> packetSizeEstimatorSupplier,
+                                  Supplier<? extends Consumer<ByteBuf>> corruptPacketRemoverSupplier) {
         this.basePacketClass = basePacketClass;
         this.bigEndian = bigEndian;
         this.parserArgs = parserArgs;
-        this.protocolClass = protocol;
-        this.driverContextClass = driverContextClass;
+        this.protocolSupplier = protocolSupplier;
+        this.driverContextSupplier = driverContextSupplier;
         this.protocolIO = protocolIO;
-        this.packetSizeEstimatorClass = packetSizeEstimatorClass;
-        this.corruptPacketRemoverClass = corruptPacketRemoverClass;
+        this.packetSizeEstimatorSupplier = packetSizeEstimatorSupplier;
+        this.corruptPacketRemoverSupplier = corruptPacketRemoverSupplier;
     }
 
-    private ChannelHandler getMessageCodec(Configuration configuration) {
+    private ChannelHandler getMessageCodec() {
         return new GeneratedProtocolMessageCodec<>(basePacketClass, protocolIO, bigEndian, parserArgs,
-            packetSizeEstimatorClass != null ? configure(configuration, createInstance(packetSizeEstimatorClass)) : null,
-            corruptPacketRemoverClass != null ? configure(configuration, createInstance(corruptPacketRemoverClass)) : null);
+            packetSizeEstimatorSupplier.get(), corruptPacketRemoverSupplier.get());
     }
 
     /** Applies the given Stack to the Pipeline */
     @Override
-    public Plc4xProtocolBase<BASE_PACKET_CLASS> configurePipeline(
-            Configuration configuration, ChannelPipeline pipeline, boolean passive) {
-        pipeline.addLast(getMessageCodec(configuration));
-        Plc4xProtocolBase<BASE_PACKET_CLASS> protocol = configure(configuration, createInstance(protocolClass));
-        if(driverContextClass != null) {
-            protocol.setDriverContext(configure(configuration, createInstance(driverContextClass)));
+    public Plc4xProtocolBase<BASE_PACKET_CLASS> configurePipeline(ChannelPipeline pipeline, boolean passive, List<EventListener> listeners) {
+        pipeline.addLast(getMessageCodec());
+        pipeline.addLast(new EventListenerMessageCodec(listeners));
+        Plc4xProtocolBase<BASE_PACKET_CLASS> protocol = protocolSupplier.get();
+        DriverContext driverContext = driverContextSupplier.get();
+        if (driverContext != null) {
+            protocol.setDriverContext(driverContext);
         }
         Plc4xNettyWrapper<BASE_PACKET_CLASS> context = new Plc4xNettyWrapper<>(pipeline, passive, protocol, basePacketClass);
         pipeline.addLast(context);
         return protocol;
-    }
-
-    private <T> T createInstance(Class<T> clazz, Object... args) {
-        try {
-            Class<?>[] parameterTypes = new Class<?>[args.length];
-            for(int i = 0; i < args.length; i++) {
-                parameterTypes[i] = args[i].getClass();
-            }
-            return clazz.getDeclaredConstructor(parameterTypes).newInstance(args);
-        } catch (InstantiationException | IllegalAccessException | InvocationTargetException | NoSuchMethodException  e) {
-            throw new PlcRuntimeException("Error creating instance of class " + clazz.getName());
-        }
     }
 
     /**
@@ -114,20 +107,26 @@ public class SingleProtocolStackConfigurer<BASE_PACKET_CLASS extends Message> im
 
         private final Class<BASE_PACKET_CLASS> basePacketClass;
         private final Class<? extends MessageIO<BASE_PACKET_CLASS, BASE_PACKET_CLASS>> messageIoClass;
-        private Class<? extends DriverContext> driverContextClass;
+        private final Configuration configuration;
+        private Supplier<? extends DriverContext> driverContextSupplier = () -> null;
         private boolean bigEndian = true;
         private Object[] parserArgs;
-        private Class<? extends Plc4xProtocolBase<BASE_PACKET_CLASS>> protocol;
-        private Class<? extends ToIntFunction<ByteBuf>> packetSizeEstimator;
-        private Class<? extends Consumer<ByteBuf>> corruptPacketRemover;
+        private Supplier<? extends Plc4xProtocolBase<BASE_PACKET_CLASS>> protocolSupplier;
+        private Supplier<? extends ToIntFunction<ByteBuf>> packetSizeEstimator = () -> null;
+        private Supplier<? extends Consumer<ByteBuf>> corruptPacketRemover = () -> null;
 
-        public SingleProtocolStackBuilder(Class<BASE_PACKET_CLASS> basePacketClass, Class<? extends MessageIO<BASE_PACKET_CLASS, BASE_PACKET_CLASS>> messageIoClass) {
+        public SingleProtocolStackBuilder(Class<BASE_PACKET_CLASS> basePacketClass, Class<? extends MessageIO<BASE_PACKET_CLASS, BASE_PACKET_CLASS>> messageIoClass, Configuration configuration) {
             this.basePacketClass = basePacketClass;
             this.messageIoClass = messageIoClass;
+            this.configuration = configuration;
         }
 
         public SingleProtocolStackBuilder<BASE_PACKET_CLASS> withDriverContext(Class<? extends DriverContext> driverContextClass) {
-            this.driverContextClass = driverContextClass;
+            return withDriverContext(configuredType(driverContextClass));
+        }
+
+        public SingleProtocolStackBuilder<BASE_PACKET_CLASS> withDriverContext(Supplier<? extends DriverContext> driverContextClass) {
+            this.driverContextSupplier = driverContextClass;
             return this;
         }
 
@@ -142,31 +141,86 @@ public class SingleProtocolStackConfigurer<BASE_PACKET_CLASS extends Message> im
         }
 
         public SingleProtocolStackBuilder<BASE_PACKET_CLASS> withProtocol(Class<? extends Plc4xProtocolBase<BASE_PACKET_CLASS>> protocol) {
-            this.protocol = protocol;
+            return withProtocol(configuredType(protocol));
+        }
+
+        public SingleProtocolStackBuilder<BASE_PACKET_CLASS> withProtocol(Supplier<? extends Plc4xProtocolBase<BASE_PACKET_CLASS>> protocol) {
+            this.protocolSupplier = protocol;
             return this;
         }
 
         public SingleProtocolStackBuilder<BASE_PACKET_CLASS> withPacketSizeEstimator(Class<? extends ToIntFunction<ByteBuf>> packetSizeEstimator) {
+            return withPacketSizeEstimator(configuredType(packetSizeEstimator));
+        }
+
+        public SingleProtocolStackBuilder<BASE_PACKET_CLASS> withPacketSizeEstimator(Supplier<? extends ToIntFunction<ByteBuf>> packetSizeEstimator) {
             this.packetSizeEstimator = packetSizeEstimator;
             return this;
         }
 
         public SingleProtocolStackBuilder<BASE_PACKET_CLASS> withCorruptPacketRemover(Class<? extends Consumer<ByteBuf>> corruptPacketRemover) {
+            return withCorruptPacketRemover(configuredType(corruptPacketRemover));
+        }
+
+        public SingleProtocolStackBuilder<BASE_PACKET_CLASS> withCorruptPacketRemover(Supplier<? extends Consumer<ByteBuf>> corruptPacketRemover) {
             this.corruptPacketRemover = corruptPacketRemover;
             return this;
         }
 
         public SingleProtocolStackConfigurer<BASE_PACKET_CLASS> build() {
-            assert this.protocol != null;
-            try {
-                final MessageIO messageIo = messageIoClass.getDeclaredConstructor().newInstance();
-                return new SingleProtocolStackConfigurer<>(
-                    basePacketClass, bigEndian, parserArgs, protocol, driverContextClass, messageIo, packetSizeEstimator, corruptPacketRemover);
-            } catch (InstantiationException | InvocationTargetException | NoSuchMethodException | IllegalAccessException e) {
-                throw new PlcRuntimeException("Error initializing MessageIO instance", e);
-            }
+            assert this.protocolSupplier != null;
+            return new SingleProtocolStackConfigurer<>(
+                basePacketClass, bigEndian, parserArgs, protocolSupplier,
+                driverContextSupplier,
+                new SimpleTypeSupplier<>(messageIoClass).get(),
+                packetSizeEstimator,
+                corruptPacketRemover
+            );
+        }
+
+        protected final <T> Supplier<T> configuredType(Class<T> protocol) {
+            return new ConfiguringSupplier<>(() -> configuration, new SimpleTypeSupplier<>(protocol));
         }
 
     }
 
+    protected static class SimpleTypeSupplier<T> implements Supplier<T> {
+
+        private final Class<T> type;
+
+        public SimpleTypeSupplier(Class<T> type) {
+            this.type = type;
+        }
+
+        @Override
+        public T get() {
+            try {
+                return type.getDeclaredConstructor().newInstance();
+            } catch (InstantiationException | IllegalAccessException | NoSuchMethodException e) {
+                throw new PlcRuntimeException("Could not construct instance of " + type.getName(), e);
+            } catch (InvocationTargetException e) {
+                throw new PlcRuntimeException("Initialization of " + type.getName() + " instance raised an error", e);
+            }
+        }
+    }
+
+    protected static class ConfiguringSupplier<T> implements Supplier<T> {
+
+        private final Supplier<Configuration> configuration;
+        private final Supplier<T> delegate;
+
+        public ConfiguringSupplier(Supplier<Configuration> configuration, Supplier<T> delegate) {
+            this.configuration = configuration;
+            this.delegate = delegate;
+        }
+
+        @Override
+        public T get() {
+            if (configuration == null) {
+                return delegate.get();
+            }
+
+            return configure(configuration.get(), delegate.get());
+        }
+    }
 }

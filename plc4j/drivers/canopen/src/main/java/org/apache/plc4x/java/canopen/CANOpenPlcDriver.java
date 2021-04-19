@@ -34,6 +34,7 @@ import org.apache.plc4x.java.spi.connection.ProtocolStackConfigurer;
 import org.apache.plc4x.java.spi.connection.SingleProtocolStackConfigurer;
 import org.apache.plc4x.java.spi.optimizer.BaseOptimizer;
 import org.apache.plc4x.java.spi.optimizer.SingleFieldOptimizer;
+import org.apache.plc4x.java.spi.transport.Transport;
 import org.apache.plc4x.java.spi.values.IEC61131ValueHandler;
 import org.apache.plc4x.java.spi.values.PlcList;
 
@@ -111,8 +112,8 @@ public class CANOpenPlcDriver extends GeneratedDriverBase<CANOpenFrame> {
     }
 
     @Override
-    protected ProtocolStackConfigurer<CANOpenFrame> getStackConfigurer() {
-        return SingleProtocolStackConfigurer.builder(CANOpenFrame.class, CANOpenSocketCANFrameIO.class)
+    protected ProtocolStackConfigurer<CANOpenFrame> getStackConfigurer(Configuration configuration, Transport transport) {
+        return SingleProtocolStackConfigurer.builder(CANOpenFrame.class, CANOpenSocketCANFrameIO.class, configuration)
             .withProtocol(CANOpenProtocolLogic.class)
             .withDriverContext(CANOpenDriverContext.class)
             .withPacketSizeEstimator(CANEstimator.class)

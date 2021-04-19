@@ -16,18 +16,15 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+package org.apache.plc4x.java.api.listener;
 
-package org.apache.plc4x.java.spi.connection;
+/**
+ * Additional helper for tracking connection state.
+ */
+public interface ConnectionStateListener extends EventListener {
 
-import io.netty.channel.ChannelPipeline;
-import org.apache.plc4x.java.api.listener.EventListener;
-import org.apache.plc4x.java.spi.Plc4xProtocolBase;
-import org.apache.plc4x.java.spi.generation.Message;
+    void connected();
 
-import java.util.List;
-
-public interface ProtocolStackConfigurer<T extends Message> {
-
-    Plc4xProtocolBase<T> configurePipeline(ChannelPipeline pipeline, boolean passive, List<EventListener> listeners);
+    void disconnected();
 
 }
