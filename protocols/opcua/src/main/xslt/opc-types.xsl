@@ -74,16 +74,7 @@
         <xsl:apply-templates select="$file/node:UANodeSet/node:UADataType[@BrowseName='OpenSecureChannelResponse']"/>
         <xsl:apply-templates select="$file/node:UANodeSet/node:UADataType[@BrowseName='CreateSessionRequest']"/>
         <xsl:apply-templates select="$file/node:UANodeSet/node:UADataType[@BrowseName='CreateSessionResponse']"/>
-    ['787' CreateSubscriptionRequest
-        [simple RequestHeader 'requestHeader']
-        [simple float 11.52 'requestedPublishingInterval']
-        [simple uint 32 'requestedLifetimeCount']
-        [simple uint 32 'requestedMaxKeepAliveCount']
-        [simple uint 32 'maxNotificationsPerPublish']
-        [reserved uint 7 '0x00']
-        [simple bit 'publishingEnabled']
-        [simple uint 8 'priority']
-    ]
+        <xsl:apply-templates select="$file/node:UANodeSet/node:UADataType[@BrowseName='CreateSubscriptionRequest']"/>
         <xsl:apply-templates select="$file/node:UANodeSet/node:UADataType[@BrowseName='CreateSubscriptionResponse']"/>
         <xsl:apply-templates select="$file/node:UANodeSet/node:UADataType[@BrowseName='CreateMonitoredItemsRequest']"/>
         <xsl:apply-templates select="$file/node:UANodeSet/node:UADataType[@BrowseName='CreateMonitoredItemsResponse']"/>
@@ -124,7 +115,6 @@
         <xsl:apply-templates select="$file/node:UANodeSet/node:UADataType[@BrowseName='CloseSecureChannelResponse']"/>
     ]
 ]
-
 
 [type 'RequestHeader'
     <xsl:apply-templates select="/opc:TypeDictionary/opc:StructuredType[@Name='RequestHeader']"/>
@@ -179,13 +169,7 @@
 ]
 
 [type 'MonitoringParameters'
-    [simple uint 32 'clientHandle']
-    [simple float 11.52 'samplingInterval']
-    [simple ExtensionObject 'filter']
-    [simple uint 32 'queueSize']
-    [reserved uint 7 '0x00']
-    [simple bit 'discardOldest']
-
+    <xsl:apply-templates select="/opc:TypeDictionary/opc:StructuredType[@Name='MonitoringParameters']"/>
 ]
 
 [enum int 32 'BrowseDirection'
@@ -205,243 +189,25 @@
 ]
 
 [type 'DiagnosticInfo'
-    [simple bit 'symbolicIdSpecified']
-    [simple bit 'namespaceURISpecified']
-    [simple bit 'localizedTextSpecified']
-    [simple bit 'localeSpecified']
-    [simple bit 'additionalInfoSpecified']
-    [simple bit 'innerStatusCodeSpecified']
-    [simple bit 'innerDiagnosticInfoSpecified']
-    [simple bit 'reserved1']
-    [optional int 32 'symbolicId' 'symbolicIdSpecified']
-    [optional int 32 'namespaceURI' 'namespaceURISpecified']
-    [optional int 32 'locale' 'localizedTextSpecified']
-    [optional int 32 'localizedText' 'localeSpecified']
-    [optional PascalString 'additionalInfo' 'additionalInfoSpecified']
-    [optional StatusCode 'innerStatusCode' 'innerStatusCodeSpecified']
-    [optional DiagnosticInfo 'innerDiagnosticInfo' 'innerDiagnosticInfoSpecified']
+    <xsl:apply-templates select="/opc:TypeDictionary/opc:StructuredType[@Name='DiagnosticInfo']"/>
 ]
 
-[type 'StatusCode'
-    [simple int 32 'statusCode']
-]
+<xsl:apply-templates select="/opc:TypeDictionary/opc:OpaqueType[@Name='StatusCode']"/>
 
 [type 'XmlElement'
     <xsl:apply-templates select="/opc:TypeDictionary/opc:StructuredType[@Name='XmlElement']"/>
-]
-
-[type 'DataValue'
-    <xsl:apply-templates select="/opc:TypeDictionary/opc:StructuredType[@Name='DataValue']"/>
 ]
 
 [enum int 6 'NodeIdType'
     <xsl:apply-templates select="/opc:TypeDictionary/opc:EnumeratedType[@Name='NodeIdType']"/>
 ]
 
-
-
-
 [type 'ByteStringNodeId'
-    [simple uint 16 'namespaceIndex']
-    [simple int 32 'bodyLength']
-    [array int 8 'body' count 'bodyLength == -1 ? 0 : bodyLength']
+    <xsl:apply-templates select="/opc:TypeDictionary/opc:StructuredType[@Name='ByteStringNodeId']"/>
 ]
 
 [type 'DataValue'
-    //A value with an associated timestamp, and quality..
-    [simple bit 'reserved2']
-    [simple bit 'reserved1']
-    [simple bit 'serverPicosecondsSpecified']
-    [simple bit 'sourcePicosecondsSpecified']
-    [simple bit 'serverTimestampSpecified']
-    [simple bit 'sourceTimestampSpecified']
-    [simple bit 'statusCodeSpecified']
-    [simple bit 'valueSpecified']
-    [optional Variant 'value' 'valueSpecified']
-    [optional StatusCode 'statusCode' 'statusCodeSpecified']
-    [optional int 64 'sourceTimestamp' 'sourceTimestampSpecified']
-    [optional uint 16 'sourcePicoseconds' 'sourcePicosecondsSpecified']
-    [optional int 64 'serverTimestamp' 'serverTimestampSpecified']
-    [optional uint 16 'serverPicoseconds' 'serverPicosecondsSpecified']
-]
-
-[type 'ByteStringArray'
-    [simple int 32 'arrayLength']
-    [array uint 8 'value' count 'arrayLength']
-]
-
-[type 'GuidValue'
-    [simple uint 32 'data1']
-    [simple uint 16 'data2']
-    [simple uint 16 'data3']
-    [array int 8 'data4' count '2']
-    [array int 8 'data5' count '6']
-]
-
-[discriminatedType 'Variant'
-    [simple bit 'arrayLengthSpecified']
-    [simple bit 'arrayDimensionsSpecified']
-    [discriminator uint 6 'VariantType']
-    [typeSwitch 'VariantType','arrayLengthSpecified'
-        ['1' VariantBoolean [bit 'arrayLengthSpecified']
-            [optional int 32 'arrayLength' 'arrayLengthSpecified']
-            [array int 8 'value' count 'arrayLength == null ? 1 : arrayLength']
-        ]
-        ['2' VariantSByte [bit 'arrayLengthSpecified']
-            [optional int 32 'arrayLength' 'arrayLengthSpecified']
-            [array int 8 'value' count 'arrayLength == null ? 1 : arrayLength']
-        ]
-        ['3' VariantByte [bit 'arrayLengthSpecified']
-            [optional int 32 'arrayLength' 'arrayLengthSpecified']
-            [array uint 8 'value' count 'arrayLength == null ? 1 : arrayLength']
-        ]
-        ['4' VariantInt16 [bit 'arrayLengthSpecified']
-            [optional int 32 'arrayLength' 'arrayLengthSpecified']
-            [array int 16 'value' count 'arrayLength == null ? 1 : arrayLength']
-        ]
-        ['5' VariantUInt16 [bit 'arrayLengthSpecified']
-            [optional int 32 'arrayLength' 'arrayLengthSpecified']
-            [array uint 16 'value' count 'arrayLength == null ? 1 : arrayLength']
-        ]
-        ['6' VariantInt32 [bit 'arrayLengthSpecified']
-            [optional int 32 'arrayLength' 'arrayLengthSpecified']
-            [array int 32 'value' count 'arrayLength == null ? 1 : arrayLength']
-        ]
-        ['7' VariantUInt32 [bit 'arrayLengthSpecified']
-            [optional int 32 'arrayLength' 'arrayLengthSpecified']
-            [array uint 32 'value' count 'arrayLength == null ? 1 : arrayLength']
-        ]
-        ['8' VariantInt64 [bit 'arrayLengthSpecified']
-            [optional int 32 'arrayLength' 'arrayLengthSpecified']
-            [array int 64 'value' count 'arrayLength == null ? 1 : arrayLength']
-        ]
-        ['9' VariantUInt64 [bit 'arrayLengthSpecified']
-            [optional int 32 'arrayLength' 'arrayLengthSpecified']
-            [array uint 64 'value' count 'arrayLength == null ? 1 : arrayLength']
-        ]
-        ['10' VariantFloat [bit 'arrayLengthSpecified']
-            [optional int 32 'arrayLength' 'arrayLengthSpecified']
-            [array float 8.23 'value' count 'arrayLength == null ? 1 : arrayLength']
-        ]
-        ['11' VariantDouble [bit 'arrayLengthSpecified']
-            [optional int 32 'arrayLength' 'arrayLengthSpecified']
-            [array float 11.52 'value' count 'arrayLength == null ? 1 : arrayLength']
-        ]
-        ['12' VariantString [bit 'arrayLengthSpecified']
-            [optional int 32 'arrayLength' 'arrayLengthSpecified']
-            [array PascalString 'value' count 'arrayLength == null ? 1 : arrayLength']
-        ]
-        ['13' VariantDateTime [bit 'arrayLengthSpecified']
-            [optional int 32 'arrayLength' 'arrayLengthSpecified']
-            [array int 64 'value' count 'arrayLength == null ? 1 : arrayLength']
-        ]
-        ['14' VariantGuid [bit 'arrayLengthSpecified']
-            [optional int 32 'arrayLength' 'arrayLengthSpecified']
-            [array GuidValue 'value' count 'arrayLength == null ? 1 : arrayLength']
-        ]
-        ['15' VariantByteString [bit 'arrayLengthSpecified']
-            [optional int 32 'arrayLength' 'arrayLengthSpecified']
-            [array ByteStringArray 'value' count 'arrayLength == null ? 1 : arrayLength']
-        ]
-        ['16' VariantXmlElement [bit 'arrayLengthSpecified']
-            [optional int 32 'arrayLength' 'arrayLengthSpecified']
-            [array PascalString 'value' count 'arrayLength == null ? 1 : arrayLength']
-        ]
-        ['17' VariantNodeId [bit 'arrayLengthSpecified']
-            [optional int 32 'arrayLength' 'arrayLengthSpecified']
-            [array NodeId 'value' count 'arrayLength == null ? 1 : arrayLength']
-        ]
-        ['18' VariantExpandedNodeId [bit 'arrayLengthSpecified']
-            [optional int 32 'arrayLength' 'arrayLengthSpecified']
-            [array ExpandedNodeId 'value' count 'arrayLength == null ? 1 : arrayLength']
-        ]
-        ['19' VariantStatusCode [bit 'arrayLengthSpecified']
-            [optional int 32 'arrayLength' 'arrayLengthSpecified']
-            [array StatusCode 'value' count 'arrayLength == null ? 1 : arrayLength']
-        ]
-        ['20' VariantQualifiedName [bit 'arrayLengthSpecified']
-            [optional int 32 'arrayLength' 'arrayLengthSpecified']
-            [array QualifiedName 'value' count 'arrayLength == null ? 1 : arrayLength']
-        ]
-        ['21' VariantLocalizedText [bit 'arrayLengthSpecified']
-            [optional int 32 'arrayLength' 'arrayLengthSpecified']
-            [array LocalizedText 'value' count 'arrayLength == null ? 1 : arrayLength']
-        ]
-        ['22' VariantExtensionObject [bit 'arrayLengthSpecified']
-            [optional int 32 'arrayLength' 'arrayLengthSpecified']
-            [array ExtensionObject 'value' count 'arrayLength == null ? 1 : arrayLength']
-        ]
-        ['23' VariantDataValue [bit 'arrayLengthSpecified']
-            [optional int 32 'arrayLength' 'arrayLengthSpecified']
-            [array DataValue 'value' count 'arrayLength == null ? 1 : arrayLength']
-        ]
-        ['24' VariantVariant [bit 'arrayLengthSpecified']
-            [optional int 32 'arrayLength' 'arrayLengthSpecified']
-            [array Variant 'value' count 'arrayLength == null ? 1 : arrayLength']
-        ]
-        ['25' VariantDiagnosticInfo [bit 'arrayLengthSpecified']
-            [optional int 32 'arrayLength' 'arrayLengthSpecified']
-            [array DiagnosticInfo 'value' count 'arrayLength == null ? 1 : arrayLength']
-        ]
-    ]
-    [optional int 32 'noOfArrayDimensions' 'arrayDimensionsSpecified']
-    [array bit 'arrayDimensions' count 'noOfArrayDimensions == null ? 0 : noOfArrayDimensions']
-]
-
-[discriminatedType 'NodeIdTypeDefinition'
-    [abstract string '-1' 'identifier']
-    [discriminator NodeIdType 'nodeType']
-    [typeSwitch 'nodeType'
-        ['nodeIdTypeTwoByte' NodeIdTwoByte
-            [simple uint 8 'namespaceIndex']
-            [simple uint 8 'id']
-            [virtual string '-1' 'identifier' 'id']
-        ]
-        ['nodeIdTypeFourByte' NodeIdFourByte
-            [simple uint 8 'namespaceIndex']
-            [simple uint 16 'id']
-            [virtual string '-1' 'identifier' 'id']
-        ]
-        ['nodeIdTypeNumeric' NodeIdNumeric
-            [simple uint 16 'namespaceIndex']
-            [simple uint 32 'id']
-            [virtual string '-1' 'identifier' 'id']
-        ]
-        ['nodeIdTypeString' NodeIdString
-            [simple uint 16 'namespaceIndex']
-            [simple string '-1' 'id']
-            [virtual string '-1' 'identifier' 'id']
-        ]
-        ['nodeIdTypeGuid' NodeIdGuid
-            [simple uint 16 'namespaceIndex']
-            [simple string '-1' 'id']
-            [virtual string '-1' 'identifier' 'id']
-        ]
-        ['nodeIdTypeByteString' NodeIdByteString
-            [simple uint 16 'namespaceIndex']
-            [simple uint 32 'id']
-            [virtual string '-1' 'identifier' 'id']
-        ]
-    ]
-]
-
-[type 'NodeId'
-    [reserved int 2 '0x00']
-    [simple NodeIdTypeDefinition 'nodeId']
-    [virtual string '-1' 'id' 'nodeId.identifier']
-]
-
-[type 'ExpandedNodeId'
-    [simple bit 'namespaceURISpecified']
-    [simple bit 'serverIndexSpecified']
-    [simple NodeIdTypeDefinition 'nodeId']
-    [virtual string '-1' 'utf-8' 'identifier' 'nodeId.identifier']
-    [optional PascalString 'namespaceURI' 'namespaceURISpecified']
-    [optional uint 32 'serverIndex' 'serverIndexSpecified']
-]
-
-[type 'ExpandedNodeId'
-    <xsl:apply-templates select="/opc:TypeDictionary/opc:StructuredType[@Name='ExpandedNodeId']"/>
+    <xsl:apply-templates select="/opc:TypeDictionary/opc:StructuredType[@Name='DataValue']"/>
 ]
 
 [discriminatedType 'ExtensionObject'
@@ -458,23 +224,8 @@
     ]
 ]
 
-[type 'PascalString'
-    [implicit int 32 'sLength'          'stringValue.length == 0 ? -1 : stringValue.length']
-    [virtual  int 32 'stringLength'     'stringValue.length == -1 ? 0 : stringValue.length']
-    [simple string 'stringLength * 8' 'UTF-8' 'stringValue']
-]
-
-[type 'PascalByteString'
-    [simple int 32 'stringLength']
-    [array int 8 'stringValue' count 'stringLength == -1 ? 0 : stringLength']
-]
-
 [type 'LocalizedText'
-    [simple uint 6 'reserved1']
-    [simple bit 'localeSpecified']
-    [simple bit 'textSpecified']
-    [optional PascalString 'Locale' 'localeSpecified']
-    [optional PascalString 'Text' 'textSpecified']
+    <xsl:apply-templates select="/opc:TypeDictionary/opc:StructuredType[@Name='LocalizedText']"/>
 ]
 
 [type 'MonitoredItemNotification'
@@ -486,14 +237,7 @@
 ]
 
 [type 'ApplicationDescription'
-    [simple PascalString 'applicationUri']
-    [simple PascalString 'productUri']
-    [simple LocalizedText 'applicationName']
-    [simple ApplicationType 'applicationType']
-    [simple PascalString 'gatewayServerUri']
-    [simple PascalString 'discoveryProfileUri']
-    [simple int 32 'noOfDiscoveryUrls']
-    [array PascalString 'discoveryUrls' count 'noOfDiscoveryUrls']
+    <xsl:apply-templates select="/opc:TypeDictionary/opc:StructuredType[@Name='ApplicationDescription']"/>
 ]
 
 [type 'EndpointDescription'
@@ -504,11 +248,9 @@
     <xsl:apply-templates select="/opc:TypeDictionary/opc:StructuredType[@Name='SignedSoftwareCertificate']"/>
 ]
 
-
 [type 'SignatureData'
     <xsl:apply-templates select="/opc:TypeDictionary/opc:StructuredType[@Name='SignatureData']"/>
 ]
-
 
 [enum int 32 'ApplicationType'
     <xsl:apply-templates select="/opc:TypeDictionary/opc:EnumeratedType[@Name='ApplicationType']"/>
@@ -574,13 +316,12 @@
 
     <xsl:template match="opc:EnumeratedType">
         <xsl:message>[INFO] Parsing Enumerated Datatype - <xsl:value-of select="@Name"/></xsl:message>
-        <xsl:apply-templates select="opc:Documentation"/>
+        <xsl:apply-templates select="opc:Documentation"/><xsl:text>
+    </xsl:text>
         <xsl:apply-templates select="opc:EnumeratedValue"/>
     </xsl:template>
 
-    <xsl:template match="opc:Documentation">
-    //<xsl:value-of select="."/>.
-    </xsl:template>
+    <xsl:template match="opc:Documentation">// <xsl:value-of select="."/></xsl:template>
 
     <xsl:template match="opc:EnumeratedValue">
         <xsl:message>[INFO] Parsing Enumerated Value - <xsl:value-of select="@Name"/></xsl:message>
@@ -601,9 +342,14 @@
                 <xsl:with-param name="switchField" select="@SwitchField"/>
                 <xsl:with-param name="switchValue" select="@SwitchValue"/>
             </xsl:call-template>
-        </xsl:variable>[type '<xsl:value-of select="@Name"/>'
+        </xsl:variable>[type '<xsl:value-of select="@Name"/>'<xsl:text>
+    </xsl:text>
         <xsl:apply-templates select="opc:Documentation"/>
-  ]
+        <xsl:choose>
+            <xsl:when test="@LengthInBits != ''">
+    [simple uint <xsl:value-of select="@LengthInBits"/> '<xsl:value-of select="$objectTypeId"/>']</xsl:when>
+        </xsl:choose>
+]
     </xsl:template>
 
     <xsl:template match="opc:StructuredType[not(@Name = 'Vector')]">
@@ -615,9 +361,10 @@
                 <xsl:with-param name="switchValue" select="@SwitchValue"/>
             </xsl:call-template>
         </xsl:variable>
-        <xsl:apply-templates select="opc:Documentation"/>
+        <xsl:apply-templates select="opc:Documentation"/><xsl:text>
+    </xsl:text>
         <xsl:choose>
-            <xsl:when test="@Name = 'ExpandedNodeId'">
+            <xsl:when test="@Name = 'CreateSubscriptionRequest'">
                 <xsl:call-template name="plc4x:parseFields">
                     <xsl:with-param name="baseNode" select="."/>
                     <xsl:with-param name="currentNodePosition">1</xsl:with-param>
@@ -645,22 +392,58 @@
                 <xsl:with-param name="text" select="@LengthField"/>
             </xsl:call-template>
         </xsl:variable>
-        <xsl:variable name="mspecType">simple</xsl:variable>
         <xsl:variable name="dataType">
-            <xsl:call-template name="translateDataType">
+            <xsl:call-template name="plc4x:getDataTypeField">
                 <xsl:with-param name="datatype" select="@TypeName"/>
                 <xsl:with-param name="name" select="-1"/>
             </xsl:call-template>
         </xsl:variable>
+        <xsl:variable name="dataTypeLength"><xsl:value-of select="@Length"/></xsl:variable>
+        <xsl:variable name="mspecType">
+            <xsl:call-template name="plc4x:getMspecName">
+                <xsl:with-param name="datatype" select="@TypeName"/>
+                <xsl:with-param name="name" select="$lowerCaseName"/>
+                <xsl:with-param name="switchField" select="@SwitchField"/>
+            </xsl:call-template>
+        </xsl:variable>
+        <xsl:variable name="lowerCaseSwitchField">
+            <xsl:call-template name="clean-id-string">
+                <xsl:with-param name="text" select="@SwitchField"/>
+                <xsl:with-param name="switchField" select="@SwitchField"/>
+                <xsl:with-param name="switchValue" select="@SwitchValue"/>
+            </xsl:call-template>
+        </xsl:variable>
+
 
         <xsl:choose>
             <xsl:when test="@LengthField">[array <xsl:value-of select="$dataType"/>  '<xsl:value-of select="$lowerCaseName"/>' count '<xsl:value-of select="$lowerCaseLengthField"/>']
+    </xsl:when>
+            <xsl:when test="$mspecType = 'reserved'">
+                <xsl:choose>
+                    <xsl:when test="xs:int(@Length) gt 1">[<xsl:value-of select="$mspecType"/><xsl:text> </xsl:text>uint <xsl:value-of select="$dataTypeLength"/> '0x00']
+    </xsl:when>
+                    <xsl:otherwise>[<xsl:value-of select="$mspecType"/><xsl:text> </xsl:text><xsl:value-of select="$dataType"/> 'false']
+    </xsl:otherwise>
+                </xsl:choose>
             </xsl:when>
+            <xsl:when test="$mspecType = 'optional'">[<xsl:value-of select="$mspecType"/><xsl:text> </xsl:text><xsl:value-of select="$dataType"/> '<xsl:value-of select="$lowerCaseName"/>' '<xsl:value-of select="$lowerCaseSwitchField"/>']
+    </xsl:when>
             <xsl:otherwise>[<xsl:value-of select="$mspecType"/><xsl:text> </xsl:text><xsl:value-of select="$dataType"/> '<xsl:value-of select="$lowerCaseName"/>']
-            </xsl:otherwise>
+    </xsl:otherwise>
         </xsl:choose>
+    </xsl:template>
 
-
+    <!-- Get the Mspec type simple/reserved/implicit/virtual/etc... -->
+    <xsl:template name="plc4x:getMspecName">
+        <xsl:param name="datatype"/>
+        <xsl:param name="name"/>
+        <xsl:param name="switchField"/>
+        <xsl:message>[INFO] Getting Mspec type for <xsl:value-of select="$name"/>></xsl:message>
+        <xsl:choose>
+            <xsl:when test="starts-with($name, 'reserved')">reserved</xsl:when>
+            <xsl:when test="$switchField != ''">optional</xsl:when>
+            <xsl:otherwise>simple</xsl:otherwise>
+        </xsl:choose>
     </xsl:template>
 
     <xsl:template name="clean-id-string">
@@ -686,7 +469,7 @@
         <xsl:value-of select="concat(translate(substring($text, 1, 1), $uppercase, $lowercase), substring($text, 2))"/>
     </xsl:template>
 
-    <xsl:template name="translateDataType">
+    <xsl:template name="plc4x:getDataTypeField">
         <xsl:param name="datatype"/>
         <xsl:param name="name"/>
         <xsl:choose>
@@ -738,14 +521,13 @@
     <xsl:function name="plc4x:getDataTypeLength" as="xs:integer">
         <xsl:param name="lengthMap" as="map(xs:string, xs:int)"/>
         <xsl:param name="datatype"/>
-        <xsl:message>[DEBUG] Getting length of Data Type</xsl:message>
-        <xsl:message>[DEBUG] Data type <xsl:value-of select="xs:string($datatype/[@TypeName])"/></xsl:message>
+        <xsl:message>[DEBUG] Getting length of <xsl:value-of select="xs:string($datatype/[@TypeName])"/></xsl:message>
         <xsl:choose>
             <xsl:when test="map:contains($lengthMap, xs:string($datatype/[@TypeName]))">
                 <xsl:message>[DEBUG] Bit Length <xsl:value-of select="$lengthMap(xs:string($datatype/[@TypeName]))"/></xsl:message>
                 <xsl:value-of select="map:get($lengthMap, xs:string($datatype/[@TypeName]))"/>
             </xsl:when>
-            <xsl:when test="$datatype/[@TypeName] = 'opc:Bit'">
+            <xsl:when test="($datatype/[@TypeName] = 'opc:Bit') or ($datatype/[@TypeName] = 'opc:Boolean')">
                 <xsl:choose>
                     <xsl:when test="$datatype/[@Length] != ''">
                         <xsl:value-of select="xs:int($datatype/[@Length])"/>
@@ -757,25 +539,50 @@
         </xsl:choose>
     </xsl:function>
 
-    <!-- Parse the fields for each type, rearranging all of the bit based fields -->
+    <!-- Parse the fields for each type, rearranging all of the bit based fields so their order matches that of the PLC4X mspec -->
     <xsl:template name="plc4x:parseFields">
         <xsl:param name="baseNode"/>
         <xsl:param name="currentNodePosition" as="xs:int"/>
         <xsl:param name="currentBitPosition" as="xs:int"/>
         <xsl:param name="currentBytePosition" as="xs:int"/>
-        <xsl:message>Current node Position - <xsl:value-of select="$currentNodePosition"/>, Bit Position - <xsl:value-of select="$currentBitPosition"/>, Byte Position - <xsl:value-of select="$currentBytePosition"/></xsl:message>
-
+        <xsl:message>[DEBUG] Recursively rearranging bit order in nodes,  Position - <xsl:value-of select="$currentNodePosition"/>, Bit Position - <xsl:value-of select="$currentBitPosition"/>, Byte Position - <xsl:value-of select="$currentBytePosition"/></xsl:message>
         <xsl:for-each select="$baseNode/opc:Field">
-            <xsl:message><xsl:value-of select="position()"/> - <xsl:value-of select="@TypeName"/></xsl:message>
+            <xsl:message>[DEBUG] <xsl:value-of select="position()"/> - <xsl:value-of select="@TypeName"/></xsl:message>
         </xsl:for-each>
         <xsl:choose>
-            <xsl:when test="$currentNodePosition = count($baseNode/opc:Field)">
-                <xsl:apply-templates select="$baseNode/opc:Field"/>
+            <xsl:when test="$currentNodePosition > count($baseNode/opc:Field)">
+                <xsl:choose>
+                    <xsl:when test="$currentBitPosition != 0">
+                        <!-- Add a reserved field if we are halfway through a Byte.  -->
+                        <xsl:message>[DEBUG] Adding a reserved field</xsl:message>
+                        <xsl:call-template name="plc4x:parseFields">
+                            <xsl:with-param name="baseNode">
+                                <xsl:copy-of select="$baseNode/opc:Field[position() lt ($currentNodePosition - $currentBytePosition)]"/>
+                                <xsl:element name="opc:Field">
+                                    <xsl:attribute name="Name">ReservedX</xsl:attribute>
+                                    <xsl:attribute name="TypeName">opc:Bit</xsl:attribute>
+                                    <xsl:attribute name="Length"><xsl:value-of select="8-$currentBitPosition"/></xsl:attribute>
+                                </xsl:element>
+                                <xsl:copy-of select="$baseNode/opc:Field[(position() gt ($currentNodePosition - $currentBytePosition - 1))]"/>
+                            </xsl:with-param>
+                            <xsl:with-param name="currentNodePosition">
+                                <xsl:value-of select="$currentNodePosition + 2"/>
+                            </xsl:with-param>
+                            <xsl:with-param name="currentBitPosition">
+                                <xsl:value-of select="0"/>
+                            </xsl:with-param>
+                            <xsl:with-param name="currentBytePosition">
+                                <xsl:value-of select="0"/>
+                            </xsl:with-param>
+                        </xsl:call-template>
+                    </xsl:when>
+                    <xsl:otherwise>
+                        <!-- Return the rearranged nodes -->
+                        <xsl:apply-templates select="$baseNode/opc:Field"/>
+                    </xsl:otherwise>
+                </xsl:choose>
             </xsl:when>
             <xsl:otherwise>
-                <xsl:for-each select="($baseNode/opc:Field)[$currentNodePosition]">
-                    <xsl:message><xsl:value-of select="position()"/> - <xsl:value-of select="@TypeName"/></xsl:message>
-                </xsl:for-each>
                 <xsl:choose>
                     <xsl:when test="plc4x:getDataTypeLength($dataTypeLength, $baseNode/opc:Field[$currentNodePosition][@TypeName]) lt 8">
                         <xsl:choose>
@@ -784,9 +591,7 @@
                                 <xsl:message>[DEBUG] First Bit in Byte</xsl:message>
                                 <xsl:call-template name="plc4x:parseFields">
                                     <xsl:with-param name="baseNode">
-                                        <xsl:copy-of select="$baseNode/opc:Field[position() lt $currentNodePosition]"/>
-                                        <xsl:copy-of select="$baseNode/opc:Field[position()=$currentNodePosition]"/>
-                                        <xsl:copy-of select="$baseNode/opc:Field[position() gt $currentNodePosition]"/>
+                                        <xsl:copy-of select="$baseNode/opc:Field"/>
                                     </xsl:with-param>
                                     <xsl:with-param name="currentNodePosition">
                                         <xsl:value-of select="$currentNodePosition + 1"/>
@@ -805,7 +610,7 @@
                                 <xsl:call-template name="plc4x:parseFields">
                                     <xsl:with-param name="baseNode">
                                         <xsl:copy-of select="$baseNode/opc:Field[position() lt ($currentNodePosition - $currentBytePosition)]"/>
-                                        <xsl:copy-of select="$baseNode/opc:Field[position()=$currentNodePosition]"/>
+                                        <xsl:copy-of select="$baseNode/opc:Field[position() = $currentNodePosition]"/>
                                         <xsl:copy-of select="$baseNode/opc:Field[(position() gt ($currentNodePosition - $currentBytePosition - 1)) and (position() lt ($currentNodePosition))]"/>
                                         <xsl:copy-of select="$baseNode/opc:Field[position() gt $currentNodePosition]"/>
                                     </xsl:with-param>
@@ -823,20 +628,47 @@
                         </xsl:choose>
                     </xsl:when>
                     <xsl:otherwise>
-                        <!-- Put node into current position -->
-                        <xsl:message>[DEBUG] not a bit data type</xsl:message>
-                        <xsl:call-template name="plc4x:parseFields">
-                            <xsl:with-param name="baseNode">
-                                <xsl:copy-of select="$baseNode/opc:Field[position() lt $currentNodePosition]"/>
-                                <xsl:copy-of select="$baseNode/opc:Field[position()=$currentNodePosition]"/>
-                                <xsl:copy-of select="$baseNode/opc:Field[position() gt $currentNodePosition]"/>
-                            </xsl:with-param>
-                            <xsl:with-param name="currentNodePosition">
-                                <xsl:value-of select="$currentNodePosition + 1"/>
-                            </xsl:with-param>
-                            <xsl:with-param name="currentBitPosition">0</xsl:with-param>
-                            <xsl:with-param name="currentBytePosition">0</xsl:with-param>
-                        </xsl:call-template>
+                        <xsl:choose>
+                            <xsl:when test="$currentBitPosition != 0">
+                                <!-- Add a reserved field if we are halfway through a Byte.  -->
+                                <xsl:message>[DEBUG] Adding a reserved field</xsl:message>
+                                <xsl:call-template name="plc4x:parseFields">
+                                    <xsl:with-param name="baseNode">
+                                        <xsl:copy-of select="$baseNode/opc:Field[position() lt ($currentNodePosition - $currentBytePosition)]"/>
+                                        <xsl:element name="opc:Field">
+                                            <xsl:attribute name="Name">ReservedX</xsl:attribute>
+                                            <xsl:attribute name="TypeName">opc:Bit</xsl:attribute>
+                                            <xsl:attribute name="Length"><xsl:value-of select="8-$currentBitPosition"/></xsl:attribute>
+                                        </xsl:element>
+                                        <xsl:copy-of select="$baseNode/opc:Field[(position() gt ($currentNodePosition - $currentBytePosition - 1))]"/>
+                                    </xsl:with-param>
+                                    <xsl:with-param name="currentNodePosition">
+                                        <xsl:value-of select="$currentNodePosition + 2"/>
+                                    </xsl:with-param>
+                                    <xsl:with-param name="currentBitPosition">
+                                        <xsl:value-of select="0"/>
+                                    </xsl:with-param>
+                                    <xsl:with-param name="currentBytePosition">
+                                        <xsl:value-of select="0"/>
+                                    </xsl:with-param>
+                                </xsl:call-template>
+                            </xsl:when>
+                            <xsl:otherwise>
+                                <!-- Put node into current position -->
+                                <xsl:message>[DEBUG] not a bit data type, just leave it in it's place</xsl:message>
+                                <xsl:call-template name="plc4x:parseFields">
+                                    <xsl:with-param name="baseNode">
+                                        <xsl:copy-of select="$baseNode/opc:Field"/>
+                                    </xsl:with-param>
+                                    <xsl:with-param name="currentNodePosition">
+                                        <xsl:value-of select="$currentNodePosition + 1"/>
+                                    </xsl:with-param>
+                                    <xsl:with-param name="currentBitPosition">0</xsl:with-param>
+                                    <xsl:with-param name="currentBytePosition">0</xsl:with-param>
+                                </xsl:call-template>
+                            </xsl:otherwise>
+                        </xsl:choose>
+
                     </xsl:otherwise>
                 </xsl:choose>
             </xsl:otherwise>
