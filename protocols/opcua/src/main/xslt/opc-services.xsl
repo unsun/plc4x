@@ -33,26 +33,30 @@
         indent="no"
         encoding="utf-8"
     />
-
     <xsl:import href="opc-common.xsl"/>
 
     <xsl:variable name="originaldoc" select="/"/>
 
-    <xsl:variable name="dataTypeLength" as="map(xs:string, xs:int)">
-        <xsl:map>
-            <xsl:for-each select="//opc:EnumeratedType">
-                <xsl:choose>
-                    <xsl:when test="@Name != '' or @LengthInBits != ''">
-                        <xsl:map-entry key="concat('ua:', xs:string(@Name))" select="xs:int(@LengthInBits)"/>
-                    </xsl:when>
-                </xsl:choose>
-            </xsl:for-each>
-        </xsl:map>
-    </xsl:variable>
+    <xsl:param name="servicesEnum"></xsl:param>
 
-
+    <xsl:param name="servicesEnumFile" select="unparsed-text($servicesEnum)"/>
 
     <xsl:template match="/">
+        <xsl:call-template name="servicesEnumParsing"/>
+    </xsl:template>
 
+    <xsl:template name="servicesEnumParsing" >
+        <xsl:variable name="tokenizedLine" select="tokenize($servicesEnumFile, '\r\n|\r|\n')" />
+[enum int 32 'OpcuaNodeIdServices'<xsl:text>
+    </xsl:text>
+        <xsl:for-each select="$tokenizedLine">
+            <xsl:variable select="tokenize(., ',')" name="values" />
+            <xsl:choose>
+                <xsl:when test="$values[2]">['<xsl:value-of select="$values[2]"/>' <xsl:value-of select="$values[1]"/>]<xsl:text>
+    </xsl:text>
+                </xsl:when>
+            </xsl:choose>
+        </xsl:for-each>
+]
     </xsl:template>
 </xsl:stylesheet>

@@ -1,22 +1,47 @@
-//
-// Licensed to the Apache Software Foundation (ASF) under one
-// or more contributor license agreements.  See the NOTICE file
-// distributed with this work for additional information
-// regarding copyright ownership.  The ASF licenses this file
-// to you under the Apache License, Version 2.0 (the
-// "License"); you may not use this file except in compliance
-// with the License.  You may obtain a copy of the License at
-//
-//     http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing,
-// software distributed under the License is distributed on an
-// "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
-// KIND, either express or implied.  See the License for the
-// specific language governing permissions and limitations
-// under the License.
-//
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Licensed to the Apache Software Foundation (ASF) under one
+  or more contributor license agreements.  See the NOTICE file
+  distributed with this work for additional information
+  regarding copyright ownership.  The ASF licenses this file
+  to you under the Apache License, Version 2.0 (the
+  "License"); you may not use this file except in compliance
+  with the License.  You may obtain a copy of the License at
 
+      http://www.apache.org/licenses/LICENSE-2.0
+
+  Unless required by applicable law or agreed to in writing,
+  software distributed under the License is distributed on an
+  "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+  KIND, either express or implied.  See the License for the
+  specific language governing permissions and limitations
+  under the License.
+-->
+<xsl:stylesheet version="2.0"
+                xmlns:xsl="http://www.w3.org/1999/XSL/Transform"
+                xmlns:xs="http://www.w3.org/2001/XMLSchema"
+                xmlns:opc="http://opcfoundation.org/BinarySchema/"
+                xmlns:plc4x="https://plc4x.apache.org/"
+                xmlns:map="http://www.w3.org/2005/xpath-functions/map"
+                xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                xmlns:ua="http://opcfoundation.org/UA/"
+                xmlns:tns="http://opcfoundation.org/UA/"
+                xmlns:node="http://opcfoundation.org/UA/2011/03/UANodeSet.xsd">
+
+    <xsl:output
+        method="text"
+        indent="no"
+        encoding="utf-8"
+    />
+
+    <xsl:import href="opc-common.xsl"/>
+
+    <xsl:variable name="originaldoc" select="/"/>
+
+    <xsl:param name="services"></xsl:param>
+    <xsl:param name="file" select="document($services)"/>
+
+    <xsl:template match="/">
 // Remark: The different fields are encoded in Little-endian.
 
 [type 'OpcuaAPU' [bit 'response']
@@ -97,6 +122,39 @@
     ]
 ]
 
+[discriminatedType 'OpcuaMessage'
+    [simple         int 8   'OPCUAnodeIdEncodingMask' ]
+    [simple         int 8   'OPCUAnodeIdNamespaceIndex' ]
+    [discriminator  int 16   'OPCUAnodeId' ]
+    [typeSwitch 'OPCUAnodeId'
+        <xsl:apply-templates select="$file/node:UANodeSet/node:UADataType[@BrowseName='OpenSecureChannelRequest']"/>
+        <xsl:apply-templates select="$file/node:UANodeSet/node:UADataType[@BrowseName='OpenSecureChannelResponse']"/>
+        <xsl:apply-templates select="$file/node:UANodeSet/node:UADataType[@BrowseName='CreateSessionRequest']"/>
+        <xsl:apply-templates select="$file/node:UANodeSet/node:UADataType[@BrowseName='CreateSessionResponse']"/>
+        <xsl:apply-templates select="$file/node:UANodeSet/node:UADataType[@BrowseName='CreateSubscriptionRequest']"/>
+        <xsl:apply-templates select="$file/node:UANodeSet/node:UADataType[@BrowseName='CreateSubscriptionResponse']"/>
+        <xsl:apply-templates select="$file/node:UANodeSet/node:UADataType[@BrowseName='CreateMonitoredItemsRequest']"/>
+        <xsl:apply-templates select="$file/node:UANodeSet/node:UADataType[@BrowseName='CreateMonitoredItemsResponse']"/>
+        <xsl:apply-templates select="$file/node:UANodeSet/node:UADataType[@BrowseName='DeleteSubscriptionsRequest']"/>
+        <xsl:apply-templates select="$file/node:UANodeSet/node:UADataType[@BrowseName='ActivateSessionRequest']"/>
+        <xsl:apply-templates select="$file/node:UANodeSet/node:UADataType[@BrowseName='ActivateSessionResponse']"/>
+        <xsl:apply-templates select="$file/node:UANodeSet/node:UADataType[@BrowseName='ReadRequest']"/>
+        <xsl:apply-templates select="$file/node:UANodeSet/node:UADataType[@BrowseName='ReadResponse']"/>
+        <xsl:apply-templates select="$file/node:UANodeSet/node:UADataType[@BrowseName='WriteRequest']"/>
+        <xsl:apply-templates select="$file/node:UANodeSet/node:UADataType[@BrowseName='WriteResponse']"/>
+        <xsl:apply-templates select="$file/node:UANodeSet/node:UADataType[@BrowseName='PublishRequest']"/>
+        <xsl:apply-templates select="$file/node:UANodeSet/node:UADataType[@BrowseName='PublishResponse']"/>
+        <xsl:apply-templates select="$file/node:UANodeSet/node:UADataType[@BrowseName='BrowseRequest']"/>
+        <xsl:apply-templates select="$file/node:UANodeSet/node:UADataType[@BrowseName='BrowseResponse']"/>
+        <xsl:apply-templates select="$file/node:UANodeSet/node:UADataType[@BrowseName='GetEndpointsRequest']"/>
+        <xsl:apply-templates select="$file/node:UANodeSet/node:UADataType[@BrowseName='GetEndpointsResponse']"/>
+        <xsl:apply-templates select="$file/node:UANodeSet/node:UADataType[@BrowseName='ServiceFault']"/>
+        <xsl:apply-templates select="$file/node:UANodeSet/node:UADataType[@BrowseName='CloseSessionRequest']"/>
+        <xsl:apply-templates select="$file/node:UANodeSet/node:UADataType[@BrowseName='CloseSessionResponse']"/>
+        <xsl:apply-templates select="$file/node:UANodeSet/node:UADataType[@BrowseName='CloseSecureChannelRequest']"/>
+        <xsl:apply-templates select="$file/node:UANodeSet/node:UADataType[@BrowseName='CloseSecureChannelResponse']"/>
+    ]
+]
 
 [type 'ByteStringArray'
     [simple int 32 'arrayLength']
@@ -109,6 +167,21 @@
     [simple uint 16 'data3']
     [array int 8 'data4' count '2']
     [array int 8 'data5' count '6']
+]
+
+[discriminatedType 'ExtensionObject'
+    //A serialized object prefixed with its data type identifier.
+    [simple ExpandedNodeId 'nodeId']
+    [virtual string '-1' 'identifier' 'nodeId.identifier']
+    [simple uint 8 'encodingMask']
+    [optional int 32 'bodyLength' 'encodingMask > 0']
+    [array int 8 'body' count 'bodyLength == null ? 0 : bodyLength']
+    [typeSwitch 'identifier'
+        <xsl:for-each select="/opc:TypeDictionary/opc:StructuredType[@BaseType = 'ua:ExtensionObject']">
+            <xsl:message><xsl:value-of select="@Name"/></xsl:message>
+            <xsl:variable name="extensionName" select="@Name"/>
+            <xsl:apply-templates select="$file/node:UANodeSet/node:UADataType[@BrowseName=$extensionName]"/>
+        </xsl:for-each>
 ]
 
 [discriminatedType 'Variant'
@@ -275,15 +348,19 @@
 
 [type 'PascalString'
     [implicit int 32 'sLength'          'stringValue.length == 0 ? -1 : stringValue.length']
-    [virtual  int 32 'stringLength'     'stringValue.length == -1 ? 0 : stringValue.length']
+    [virtual  int 32 'stringLength'     'stringValue.length']
     [simple string 'stringLength * 8' 'UTF-8' 'stringValue']
 ]
 
 [type 'PascalByteString'
-    [simple int 32 'stringLength']
+    [implicit int 32 'sLength'          'stringValue.length == 0 ? -1 : stringValue.length']
+    [virtual  int 32 'stringLength'     'stringValue.size']
     [array int 8 'stringValue' count 'stringLength == -1 ? 0 : stringLength']
 ]
 
+<xsl:apply-templates select="/opc:TypeDictionary/opc:StructuredType[(@Name != 'ExtensionObject') and (@Name != 'Variant') and (@Name != 'NodeId') and (@Name != 'ExpandedNodeId') and not (@BaseType)]"/>
+<xsl:apply-templates select="/opc:TypeDictionary/opc:EnumeratedType"/>
+<xsl:apply-templates select="/opc:TypeDictionary/opc:OpaqueType"/>
 
 [enum string '-1' 'OpcuaDataType' [uint 8 'variantType']
     ['IEC61131_NULL' NULL ['0']]
@@ -318,3 +395,6 @@
     ['g' GUID_IDENTIFIER]
     ['b' BINARY_IDENTIFIER]
 ]
+
+    </xsl:template>
+</xsl:stylesheet>
