@@ -326,6 +326,26 @@
     ]
 ]
 
+
+
+[discriminatedType 'SimpleDiscriminatedType'
+    [discriminator uint 8 'discr']
+    [typeSwitch 'discr'
+        ['0x00' SimpleDiscriminatedTypeA
+            [simple        AnotherSimpleDiscriminatedTypeA 'simpA']
+        ]
+    ]
+]
+
+[discriminatedType 'AnotherSimpleDiscriminatedType'
+    [discriminator uint 8 'discr']
+    [typeSwitch 'discr'
+        ['0x00' AnotherSimpleDiscriminatedTypeA
+            [simple        uint 8 'simpA']
+        ]
+    ]
+]
+
 ////////////////////////////////////////////////////////////////
 // Enumerated Type Tests
 ////////////////////////////////////////////////////////////////

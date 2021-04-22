@@ -55,9 +55,14 @@
         <xsl:variable name="browseName">
             <xsl:value-of select='@BrowseName'/>
         </xsl:variable>
+        <xsl:variable name="objectTypeId">
+            <xsl:call-template name="clean-datatype-string">
+                <xsl:with-param name="text" select="@BrowseName"/>
+            </xsl:call-template>
+        </xsl:variable>
         <xsl:choose>
             <xsl:when test="$originaldoc/opc:TypeDictionary/opc:StructuredType[@Name=$browseName] != ''"><xsl:text>
-        </xsl:text>['<xsl:value-of select="number(substring(@NodeId,3)) + 2"/><xsl:text>' </xsl:text><xsl:value-of select='@BrowseName'/><xsl:text>
+        </xsl:text>['<xsl:value-of select="number(substring(@NodeId,3)) + 2"/><xsl:text>' </xsl:text><xsl:value-of select='$objectTypeId'/><xsl:text>
             </xsl:text>
                 <xsl:message><xsl:value-of select="serialize($originaldoc/opc:TypeDictionary/opc:StructuredType[@Name=$browseName])"/></xsl:message>
                 <xsl:call-template name="plc4x:parseFields">
@@ -128,16 +133,14 @@
 ]
     </xsl:template>
 
-    <xsl:template match="opc:StructuredType[not(@Name = 'Vector') and (@BaseType != '')]">
+    <xsl:template match="opc:StructuredType[starts-with(@BaseType, 'tns:')]">
         <xsl:message>[INFO] Parsing Structured Datatype - <xsl:value-of select="@Name"/></xsl:message>
         <xsl:variable name="objectTypeId">
-            <xsl:call-template name="clean-id-string">
+            <xsl:call-template name="clean-datatype-string">
                 <xsl:with-param name="text" select="@Name"/>
-                <xsl:with-param name="switchField" select="@SwitchField"/>
-                <xsl:with-param name="switchValue" select="@SwitchValue"/>
             </xsl:call-template>
-        </xsl:variable>['<xsl:value-of select="number(substring(@NodeId,3)) + 2"/><xsl:text>' </xsl:text><xsl:value-of select='@BrowseName'/><xsl:text>
-            </xsl:text>
+        </xsl:variable>[type '<xsl:value-of select="$objectTypeId"/>'<xsl:text>
+    </xsl:text>
         <xsl:apply-templates select="opc:Documentation"/><xsl:text>
     </xsl:text>
         <xsl:call-template name="plc4x:parseFields">
@@ -146,18 +149,16 @@
             <xsl:with-param name="currentBytePosition">0</xsl:with-param>
             <xsl:with-param name="currentBitPosition">0</xsl:with-param>
         </xsl:call-template>
-    ]
+        ]
     </xsl:template>
 
-    <xsl:template match="opc:StructuredType[not(@Name = 'Vector') and not (@BaseType)]">
+    <xsl:template match="opc:StructuredType[not (@BaseType)]">
         <xsl:message>[INFO] Parsing Structured Datatype - <xsl:value-of select="@Name"/></xsl:message>
         <xsl:variable name="objectTypeId">
-            <xsl:call-template name="clean-id-string">
+            <xsl:call-template name="clean-datatype-string">
                 <xsl:with-param name="text" select="@Name"/>
-                <xsl:with-param name="switchField" select="@SwitchField"/>
-                <xsl:with-param name="switchValue" select="@SwitchValue"/>
             </xsl:call-template>
-        </xsl:variable>[type '<xsl:value-of select="@Name"/>'<xsl:text>
+        </xsl:variable>[type '<xsl:value-of select="$objectTypeId"/>'<xsl:text>
     </xsl:text>
         <xsl:apply-templates select="opc:Documentation"/><xsl:text>
     </xsl:text>
@@ -239,6 +240,15 @@
             <xsl:when test="starts-with($name, 'reserved')">reserved</xsl:when>
             <xsl:when test="$switchField != ''">optional</xsl:when>
             <xsl:otherwise>simple</xsl:otherwise>
+        </xsl:choose>
+    </xsl:template>
+
+    <!-- Convert a Data Type name so that it doesn't clash with mspec key words -->
+    <xsl:template name="clean-datatype-string">
+        <xsl:param name="text"/>
+        <xsl:choose>
+            <xsl:when test="$text = 'Vector'">OpcuaVector</xsl:when>
+            <xsl:otherwise><xsl:value-of select="$text"/></xsl:otherwise>
         </xsl:choose>
     </xsl:template>
 

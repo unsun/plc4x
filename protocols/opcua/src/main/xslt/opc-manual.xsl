@@ -169,19 +169,32 @@
     [array int 8 'data5' count '6']
 ]
 
+[type 'ExpandedNodeId'
+    [simple bit 'namespaceURISpecified']
+    [simple bit 'serverIndexSpecified']
+    [simple NodeIdTypeDefinition 'nodeId']
+    [virtual string '-1' 'utf-8' 'identifier' 'nodeId.identifier']
+    [optional PascalString 'namespaceURI' 'namespaceURISpecified']
+    [optional uint 32 'serverIndex' 'serverIndexSpecified']
+]
+
 [discriminatedType 'ExtensionObject'
     //A serialized object prefixed with its data type identifier.
-    [simple ExpandedNodeId 'nodeId']
-    [virtual string '-1' 'identifier' 'nodeId.identifier']
-    [simple uint 8 'encodingMask']
-    [optional int 32 'bodyLength' 'encodingMask > 0']
-    [array int 8 'body' count 'bodyLength == null ? 0 : bodyLength']
+    [reserved uint 5 '0x00']
+    [simple bit 'xmlBody']
+    [simple bit 'binaryBody']
+    [simple bit 'typeIdSpecified']
+    [optional ExpandedNodeId 'typeId' 'typeIdSpecified']
+    [virtual string '-1' 'identifier' 'typeId.identifier']
+    [simple int 32 'bodyLength']
+    [array int 8 'body' count 'bodyLength == -1 ? 0 : bodyLength']
     [typeSwitch 'identifier'
         <xsl:for-each select="/opc:TypeDictionary/opc:StructuredType[@BaseType = 'ua:ExtensionObject']">
             <xsl:message><xsl:value-of select="@Name"/></xsl:message>
             <xsl:variable name="extensionName" select="@Name"/>
             <xsl:apply-templates select="$file/node:UANodeSet/node:UADataType[@BrowseName=$extensionName]"/>
         </xsl:for-each>
+    ]
 ]
 
 [discriminatedType 'Variant'
@@ -337,28 +350,20 @@
     [virtual string '-1' 'id' 'nodeId.identifier']
 ]
 
-[type 'ExpandedNodeId'
-    [simple bit 'namespaceURISpecified']
-    [simple bit 'serverIndexSpecified']
-    [simple NodeIdTypeDefinition 'nodeId']
-    [virtual string '-1' 'utf-8' 'identifier' 'nodeId.identifier']
-    [optional PascalString 'namespaceURI' 'namespaceURISpecified']
-    [optional uint 32 'serverIndex' 'serverIndexSpecified']
-]
-
 [type 'PascalString'
     [implicit int 32 'sLength'          'stringValue.length == 0 ? -1 : stringValue.length']
-    [virtual  int 32 'stringLength'     'stringValue.length']
+    [virtual  int 32 'stringLength'     'stringValue.length == -1 ? 0 : stringValue.length']
     [simple string 'stringLength * 8' 'UTF-8' 'stringValue']
 ]
 
 [type 'PascalByteString'
     [implicit int 32 'sLength'          'stringValue.length == 0 ? -1 : stringValue.length']
-    [virtual  int 32 'stringLength'     'stringValue.size']
-    [array int 8 'stringValue' count 'stringLength == -1 ? 0 : stringLength']
+    [virtual  int 32 'stringLength'     'stringValue.length == -1 ? 0 : stringValue.length']
+    [simple string 'stringLength * 8' 'UTF-8' 'stringValue']
 ]
 
 <xsl:apply-templates select="/opc:TypeDictionary/opc:StructuredType[(@Name != 'ExtensionObject') and (@Name != 'Variant') and (@Name != 'NodeId') and (@Name != 'ExpandedNodeId') and not (@BaseType)]"/>
+<xsl:apply-templates select="/opc:TypeDictionary/opc:StructuredType[starts-with(@BaseType, 'tns:')]"/>
 <xsl:apply-templates select="/opc:TypeDictionary/opc:EnumeratedType"/>
 <xsl:apply-templates select="/opc:TypeDictionary/opc:OpaqueType"/>
 
