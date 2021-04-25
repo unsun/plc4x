@@ -34,6 +34,9 @@
         encoding="utf-8"
     />
 
+    <xsl:param name="services"></xsl:param>
+    <xsl:param name="file" select="document($services)"/>
+
     <xsl:variable name="originaldoc" select="/"/>
 
     <xsl:variable name="lowercase" select="'abcdefghijklmnopqrstuvwxyz'"/>
@@ -225,6 +228,11 @@
             </xsl:when>
             <xsl:when test="$mspecType = 'optional'">[<xsl:value-of select="$mspecType"/><xsl:text> </xsl:text><xsl:value-of select="$dataType"/> '<xsl:value-of select="$lowerCaseName"/>' '<xsl:value-of select="$lowerCaseSwitchField"/>']
             </xsl:when>
+            <xsl:when test="$dataType = 'ExtensionObjectDefinition'">
+                <xsl:variable name="browseName" select="substring-after(@TypeName,':')"/>
+                <xsl:variable name="id" select="substring-after($file/node:UANodeSet/node:UADataType[@BrowseName=$browseName]/@NodeId, '=')"/><xsl:text>
+            </xsl:text>[<xsl:value-of select="$mspecType"/><xsl:text> </xsl:text><xsl:value-of select="$dataType"/> '<xsl:value-of select="$lowerCaseName"/>' ['<xsl:value-of select='$id'/>']]
+            </xsl:when>
             <xsl:otherwise>[<xsl:value-of select="$mspecType"/><xsl:text> </xsl:text><xsl:value-of select="$dataType"/> '<xsl:value-of select="$lowerCaseName"/>']
             </xsl:otherwise>
         </xsl:choose>
@@ -247,6 +255,7 @@
     <xsl:template name="clean-datatype-string">
         <xsl:param name="text"/>
         <xsl:choose>
+            <xsl:when test="$text = 'Vector'">OpcuaVector</xsl:when>
             <xsl:when test="$text = 'Vector'">OpcuaVector</xsl:when>
             <xsl:otherwise><xsl:value-of select="$text"/></xsl:otherwise>
         </xsl:choose>
@@ -300,6 +309,19 @@
             <xsl:when test="$datatype = 'opc:ByteString'">PascalByteString</xsl:when>
             <xsl:when test="$datatype = 'opc:DateTime'">int 64</xsl:when>
             <xsl:when test="$datatype = 'opc:String'">PascalString</xsl:when>
+            <xsl:when test="not(starts-with($datatype, 'opc:'))">
+                <xsl:variable name="parent" select="$originaldoc/opc:TypeDictionary/opc:StructuredType[@Name=substring-after($datatype,':')]/@BaseType"/>
+                <xsl:choose>
+                    <xsl:when test="$parent != ''">
+                        <xsl:variable name="id" select="substring-after($file/node:UANodeSet/node:UADataType[@BrowseName=substring-after($datatype,':')]/@NodeId, ':')"/>
+                        <xsl:choose>
+                            <xsl:when test="substring-after($parent,':') = 'ExtensionObject'">ExtensionObjectDefinition</xsl:when>
+                            <xsl:otherwise><xsl:value-of select="substring-after($parent,':')"/></xsl:otherwise>
+                        </xsl:choose>
+                    </xsl:when>
+                    <xsl:otherwise><xsl:value-of select="substring-after($datatype,':')"/></xsl:otherwise>
+                </xsl:choose>
+            </xsl:when>
             <xsl:otherwise><xsl:value-of select="substring-after($datatype,':')"/></xsl:otherwise>
         </xsl:choose>
     </xsl:template>

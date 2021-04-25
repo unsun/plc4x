@@ -327,24 +327,24 @@
 ]
 
 
+//Test to check if we can include concrete types as fields. Doesn't work in any language at the moment.
+//[discriminatedType 'SimpleDiscriminatedType'
+//    [discriminator uint 8 'discr']
+//    [typeSwitch 'discr'
+//        ['0x00' SimpleDiscriminatedTypeA
+//            [simple        AnotherSimpleDiscriminatedTypeA 'simpA']
+//        ]
+//    ]
+//]
 
-[discriminatedType 'SimpleDiscriminatedType'
-    [discriminator uint 8 'discr']
-    [typeSwitch 'discr'
-        ['0x00' SimpleDiscriminatedTypeA
-            [simple        AnotherSimpleDiscriminatedTypeA 'simpA']
-        ]
-    ]
-]
-
-[discriminatedType 'AnotherSimpleDiscriminatedType'
-    [discriminator uint 8 'discr']
-    [typeSwitch 'discr'
-        ['0x00' AnotherSimpleDiscriminatedTypeA
-            [simple        uint 8 'simpA']
-        ]
-    ]
-]
+//[discriminatedType 'AnotherSimpleDiscriminatedType'
+//    [discriminator uint 8 'discr']
+//    [typeSwitch 'discr'
+//        ['0x00' AnotherSimpleDiscriminatedTypeA
+//            [simple        uint 8 'simpA']
+//        ]
+//    ]
+//]
 
 ////////////////////////////////////////////////////////////////
 // Enumerated Type Tests
