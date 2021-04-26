@@ -524,6 +524,7 @@ public class JavaLanguageTemplateHelper extends BaseFreemarkerLanguageTemplateHe
                 return Boolean.toString(((BooleanLiteral) term).getValue());
             } else if (term instanceof NumericLiteral) {
                 System.out.println("Blah12");
+                System.out.println(((NumericLiteral) term).getNumber().toString());
                 return ((NumericLiteral) term).getNumber().toString();
             } else if (term instanceof StringLiteral) {
                 System.out.println("Blah13");

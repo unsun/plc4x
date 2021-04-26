@@ -156,15 +156,41 @@
     [simple ExtensionObjectDefinition 'body' ['identifier']]
 ]
 
-[discriminatedType 'ExtensionObjectDefinition' [int 16 'identifier']
+[discriminatedType 'ExtensionObjectDefinition' [string '-1' 'identifier']
     [typeSwitch 'identifier'
-        <xsl:for-each select="/opc:TypeDictionary/opc:StructuredType[@BaseType = 'ua:ExtensionObject']">
+        <xsl:for-each select="/opc:TypeDictionary/opc:StructuredType[(@BaseType = 'ua:ExtensionObject') and not(@Name = 'UserIdentityToken') and not(@Name = 'PublishedDataSetDataType') and not(@Name = 'DataSetReaderDataType')]">
             <xsl:message><xsl:value-of select="@Name"/></xsl:message>
             <xsl:variable name="extensionName" select="@Name"/>
             <xsl:apply-templates select="$file/node:UANodeSet/node:UADataType[@BrowseName=$extensionName]"/>
         </xsl:for-each>
+
+        ['316' UserIdentityToken
+            [simple UserIdentityTokenDefinition 'userIdentityTokenDefinition']
+        ]
     ]
 ]
+
+[discriminatedType 'UserIdentityTokenDefinition'
+    [implicit int 32 'policyIdLength' 'policyId.length']
+    [discriminator string '-1' 'policyId']
+    [typeSwitch 'policyId'
+        ['none' AnonymousIdentityToken
+        ]
+        ['username' UserNameIdentityToken
+            [simple PascalString 'userName']
+            [simple PascalByteString 'password']
+            [simple PascalString 'encryptionAlgorithm']
+        ]
+        ['certificate' X509IdentityToken
+            [simple PascalByteString 'certificateData']
+        ]
+        ['identity' IssuedIdentityToken
+            [simple PascalByteString 'tokenData']
+            [simple PascalString 'encryptionAlgorithm']
+        ]
+    ]
+]
+
 
 [discriminatedType 'Variant'
     [simple bit 'arrayLengthSpecified']
@@ -338,8 +364,7 @@
 
 ]
 
-<xsl:apply-templates select="/opc:TypeDictionary/opc:StructuredType[(@Name != 'ExtensionObject') and (@Name != 'Variant') and (@Name != 'NodeId') and (@Name != 'ExpandedNodeId') and not (@BaseType)]"/>
-<xsl:apply-templates select="/opc:TypeDictionary/opc:StructuredType[starts-with(@BaseType, 'tns:')]"/>
+<xsl:apply-templates select="/opc:TypeDictionary/opc:StructuredType[(@Name != 'ExtensionObject') and (@Name != 'Variant') and (@Name != 'NodeId') and (@Name != 'ExpandedNodeId') and not(@BaseType)]"/>
 <xsl:apply-templates select="/opc:TypeDictionary/opc:EnumeratedType"/>
 <xsl:apply-templates select="/opc:TypeDictionary/opc:OpaqueType"/>
 

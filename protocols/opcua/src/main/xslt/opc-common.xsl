@@ -214,7 +214,16 @@
         </xsl:variable>
         <!-- Depending on what kind of mspec variable it is, we have to include different arguments -->
         <xsl:choose>
-            <xsl:when test="@LengthField">[array <xsl:value-of select="$dataType"/>  '<xsl:value-of select="$lowerCaseName"/>' count '<xsl:value-of select="$lowerCaseLengthField"/>']
+            <xsl:when test="@LengthField">
+                <xsl:choose>
+                    <xsl:when test="$dataType = 'ExtensionObjectDefinition'">
+                        <xsl:variable name="browseName" select="substring-after(@TypeName,':')"/>
+                        <xsl:variable name="id" select="substring-after($file/node:UANodeSet/node:UADataType[@BrowseName=$browseName]/@NodeId, '=')"/><xsl:text>
+            </xsl:text>[array <xsl:value-of select="$dataType"/>  '<xsl:value-of select="$lowerCaseName"/>' count '<xsl:value-of select="$lowerCaseLengthField"/>' ['<xsl:value-of select='$id'/>']]
+            </xsl:when>
+                    <xsl:otherwise>[array <xsl:value-of select="$dataType"/>  '<xsl:value-of select="$lowerCaseName"/>' count '<xsl:value-of select="$lowerCaseLengthField"/>']
+            </xsl:otherwise>
+                </xsl:choose>
             </xsl:when>
             <xsl:when test="$mspecType = 'reserved'">
                 <xsl:choose>

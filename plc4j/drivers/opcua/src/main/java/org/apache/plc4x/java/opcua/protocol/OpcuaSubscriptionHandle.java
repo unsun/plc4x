@@ -26,13 +26,12 @@ import org.apache.plc4x.java.api.types.PlcResponseCode;
 import org.apache.plc4x.java.api.value.PlcValue;
 import org.apache.plc4x.java.opcua.field.OpcuaField;
 import org.apache.plc4x.java.opcua.readwrite.*;
-import org.apache.plc4x.java.opcua.readwrite.io.OpcuaMessageIO;
+import org.apache.plc4x.java.opcua.readwrite.io.ExtensionObjectIO;
+import org.apache.plc4x.java.opcua.readwrite.types.OpcuaNodeIdServices;
 import org.apache.plc4x.java.spi.generation.ParseException;
 import org.apache.plc4x.java.spi.generation.ReadBuffer;
 import org.apache.plc4x.java.spi.generation.WriteBuffer;
 import org.apache.plc4x.java.spi.messages.DefaultPlcSubscriptionEvent;
-//import org.apache.plc4x.java.opcua.connection.OpcuaTcpPlcConnection;
-import org.apache.plc4x.java.spi.messages.PlcSubscriber;
 import org.apache.plc4x.java.spi.messages.utils.ResponseItem;
 import org.apache.plc4x.java.spi.model.DefaultPlcConsumerRegistration;
 import org.apache.plc4x.java.spi.model.DefaultPlcSubscriptionHandle;
@@ -116,16 +115,23 @@ public class OpcuaSubscriptionHandle extends DefaultPlcSubscriptionHandle {
                         }
                     }
 
-                    PublishRequest publishRequest = new PublishRequest((byte) 1,
-                        (byte) 0,
+                    PublishRequest publishRequest = new PublishRequest(
                         requestHeader,
                         ackLength,
                         acks
                     );
 
+                    ExpandedNodeId extExpandedNodeId = new ExpandedNodeId(false,           //Namespace Uri Specified
+                        false,            //Server Index Specified
+                        new NodeIdFourByte((short) 0, Integer.valueOf(publishRequest.getIdentifier())),
+                        OpcuaProtocolLogic.NULL_STRING,
+                        1L);
+
                     try {
                         WriteBuffer buffer = new WriteBuffer(publishRequest.getLengthInBytes(), true);
-                        OpcuaMessageIO.staticSerialize(buffer, publishRequest);
+                        ExtensionObjectIO.staticSerialize(buffer, new ExtensionObject(true,
+                            extExpandedNodeId,
+                            publishRequest));
 
                         int transactionId = this.plcSubscriber.getTransactionIdentifier();
 
@@ -146,17 +152,17 @@ public class OpcuaSubscriptionHandle extends DefaultPlcSubscriptionHandle {
                             .handle(opcuaResponse -> {
                                 PublishResponse responseMessage = null;
                                 try {
-                                    responseMessage = (PublishResponse) OpcuaMessageIO.staticParse(new ReadBuffer(opcuaResponse.getMessage(), true));
+                                    responseMessage = (PublishResponse) ExtensionObjectIO.staticParse(new ReadBuffer(opcuaResponse.getMessage(), true)).getBody();
                                 } catch (ParseException e) {
                                     e.printStackTrace();
                                 }
-                                outstandingRequests.remove(responseMessage.getResponseHeader().getRequestHandle());
-                                outstandingAcknowledgements.add(responseMessage.getResponseHeader().getRequestHandle());
+                                outstandingRequests.remove(((ResponseHeader) responseMessage.getResponseHeader()).getRequestHandle());
+                                outstandingAcknowledgements.add(((ResponseHeader) responseMessage.getResponseHeader()).getRequestHandle());
 
-                                if (responseMessage.getNotificationMessage().getNoOfNotificationData() > 0) {
+                                if (((NotificationMessage) responseMessage.getNotificationMessage()).getNoOfNotificationData() > 0) {
 
                                 }
-                                for (ExtensionObject notifications : responseMessage.getNotificationMessage().getNotificationData()) {
+                                for (ExtensionObject notifications : ((NotificationMessage) responseMessage.getNotificationMessage()).getNotificationData()) {
 
                                 }
 
