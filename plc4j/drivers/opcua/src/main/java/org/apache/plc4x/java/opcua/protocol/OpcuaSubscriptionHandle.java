@@ -129,7 +129,7 @@ public class OpcuaSubscriptionHandle extends DefaultPlcSubscriptionHandle {
 
                     try {
                         WriteBuffer buffer = new WriteBuffer(publishRequest.getLengthInBytes(), true);
-                        ExtensionObjectIO.staticSerialize(buffer, new ExtensionObject(true,
+                        ExtensionObjectIO.staticSerialize(buffer, new ExtensionObject(
                             extExpandedNodeId,
                             publishRequest));
 

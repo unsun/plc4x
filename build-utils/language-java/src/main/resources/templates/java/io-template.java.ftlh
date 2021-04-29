@@ -634,6 +634,7 @@ public class ${type.name}IO implements <#if outputFlavor != "passive">MessageIO<
         ${complexTypeReference.name}IO.staticSerialize(io, ${simpleField.name});
             </#if>
         </#if>
+    LOGGER.info("${simpleField.name} - {} - Position {}", ${simpleField.name}, io.getPos());
         <#break>
     <#case "switch">
         <#assign switchField = field>

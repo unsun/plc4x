@@ -218,7 +218,7 @@
                 <xsl:choose>
                     <xsl:when test="$dataType = 'ExtensionObjectDefinition'">
                         <xsl:variable name="browseName" select="substring-after(@TypeName,':')"/>
-                        <xsl:variable name="id" select="substring-after($file/node:UANodeSet/node:UADataType[@BrowseName=$browseName]/@NodeId, '=')"/><xsl:text>
+                        <xsl:variable name="id" select="number(substring-after($file/node:UANodeSet/node:UADataType[@BrowseName=$browseName]/@NodeId, '=')) + 2"/><xsl:text>
             </xsl:text>[array <xsl:value-of select="$dataType"/>  '<xsl:value-of select="$lowerCaseName"/>' count '<xsl:value-of select="$lowerCaseLengthField"/>' ['<xsl:value-of select='$id'/>']]
             </xsl:when>
                     <xsl:otherwise>[array <xsl:value-of select="$dataType"/>  '<xsl:value-of select="$lowerCaseName"/>' count '<xsl:value-of select="$lowerCaseLengthField"/>']
@@ -239,7 +239,7 @@
             </xsl:when>
             <xsl:when test="$dataType = 'ExtensionObjectDefinition'">
                 <xsl:variable name="browseName" select="substring-after(@TypeName,':')"/>
-                <xsl:variable name="id" select="substring-after($file/node:UANodeSet/node:UADataType[@BrowseName=$browseName]/@NodeId, '=')"/><xsl:text>
+                <xsl:variable name="id" select="number(substring-after($file/node:UANodeSet/node:UADataType[@BrowseName=$browseName]/@NodeId, '=')) + 2"/><xsl:text>
             </xsl:text>[<xsl:value-of select="$mspecType"/><xsl:text> </xsl:text><xsl:value-of select="$dataType"/> '<xsl:value-of select="$lowerCaseName"/>' ['<xsl:value-of select='$id'/>']]
             </xsl:when>
             <xsl:otherwise>[<xsl:value-of select="$mspecType"/><xsl:text> </xsl:text><xsl:value-of select="$dataType"/> '<xsl:value-of select="$lowerCaseName"/>']
@@ -369,6 +369,8 @@
         </xsl:for-each>
         <xsl:choose>
             <xsl:when test="$currentNodePosition > count($baseNode/opc:Field)">
+                <xsl:message>Node Position - <xsl:value-of select="$currentNodePosition"/></xsl:message>
+                <xsl:message>Bit Position - <xsl:value-of select="$currentBitPosition"/></xsl:message>
                 <xsl:choose>
                     <xsl:when test="$currentBitPosition != 0">
                         <!-- Add a reserved field if we are halfway through a Byte.  -->
@@ -447,7 +449,7 @@
                     </xsl:when>
                     <xsl:otherwise>
                         <xsl:choose>
-                            <xsl:when test="$currentBitPosition != 0">
+                            <xsl:when test="$currentBitPosition != 0 and $currentBitPosition lt 8">
                                 <!-- Add a reserved field if we are halfway through a Byte.  -->
                                 <xsl:message>[DEBUG] Adding a reserved field</xsl:message>
                                 <xsl:call-template name="plc4x:parseFields">

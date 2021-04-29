@@ -51,6 +51,7 @@ import org.apache.plc4x.java.spi.values.IEC61131ValueHandler;
 import org.apache.plc4x.java.spi.values.PlcList;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import sun.rmi.transport.Endpoint;
 
 import java.math.BigInteger;
 import java.nio.ByteBuffer;
@@ -92,13 +93,15 @@ public class OpcuaProtocolLogic extends Plc4xProtocolBase<OpcuaAPU> implements H
     private static final PascalByteString NULL_BYTE_STRING = new PascalByteString( -1, null);
     private static ExpandedNodeId NULL_EXPANDED_NODEID = new ExpandedNodeId(false,
         false,
-        new NodeIdTwoByte((short) 0, (short) 0),
+        new NodeIdTwoByte((short) 0),
         null,
         null
     );
-    protected static final ExtensionObject NULL_EXTENSION_OBJECT = new ExtensionObject(true,
+    protected static final ExtensionObject NULL_EXTENSION_OBJECT = new ExtensionObject(
         NULL_EXPANDED_NODEID,
-        new Frame());               // Body
+        new NullExtension(false,
+            false,
+            false));               // Body
     private static final long EPOCH_OFFSET = 116444736000000000L;         //Offset between OPC UA epoch time and linux epoch time.
     private static final PascalString APPLICATION_URI = new PascalString("urn:apache:plc4x:client");
     private static final PascalString PRODUCT_URI = new PascalString("urn:apache:plc4x:client");
@@ -107,9 +110,9 @@ public class OpcuaProtocolLogic extends Plc4xProtocolBase<OpcuaAPU> implements H
     private static final String CONTINUATION_CHUNK = "C";
     private static final String ABORT_CHUNK = "F";
 
-    private NodeIdTypeDefinition authenticationToken = new NodeIdTwoByte((short) 0, (short) 0);
+    private NodeIdTypeDefinition authenticationToken = new NodeIdTwoByte((short) 0);
 
-    private final String sessionName = "UaSession:" + APPLICATION_TEXT + ":" + RandomStringUtils.random(20, true, true);
+    private final String sessionName = "UaSession:" + APPLICATION_TEXT.getStringValue() + ":" + RandomStringUtils.random(20, true, true);
     private final byte[] clientNonce = RandomUtils.nextBytes(40);
     private RequestTransactionManager tm = new RequestTransactionManager(1);
 
@@ -190,8 +193,8 @@ public class OpcuaProtocolLogic extends Plc4xProtocolBase<OpcuaAPU> implements H
         ExpandedNodeId expandedNodeId = new ExpandedNodeId(false,           //Namespace Uri Specified
             false,            //Server Index Specified
             new NodeIdFourByte((short) 0, 471),
-            NULL_STRING,
-            1L);    //Identifier for OpenSecureChannel
+            null,
+            null);    //Identifier for OpenSecureChannel
 
         RequestHeader requestHeader = new RequestHeader(
             new NodeId(authenticationToken),
@@ -208,7 +211,7 @@ public class OpcuaProtocolLogic extends Plc4xProtocolBase<OpcuaAPU> implements H
 
         try {
             WriteBuffer buffer = new WriteBuffer(closeSessionRequest.getLengthInBytes(), true);
-            ExtensionObjectIO.staticSerialize(buffer, new ExtensionObject(true,
+            ExtensionObjectIO.staticSerialize(buffer, new ExtensionObject(
                 expandedNodeId,
                 closeSessionRequest));
 
@@ -249,15 +252,15 @@ public class OpcuaProtocolLogic extends Plc4xProtocolBase<OpcuaAPU> implements H
         ExpandedNodeId expandedNodeId = new ExpandedNodeId(false,           //Namespace Uri Specified
             false,            //Server Index Specified
             new NodeIdFourByte((short) 0, Integer.valueOf(closeSecureChannelRequest.getIdentifier())),
-            NULL_STRING,
-            1L);
+            null,
+            null);
 
         OpcuaCloseRequest closeRequest = new OpcuaCloseRequest(FINAL_CHUNK,
             channelId.get(),
             tokenId.get(),
             transactionId,
             transactionId,
-            new ExtensionObject(true,
+            new ExtensionObject(
                 expandedNodeId,
                 closeSecureChannelRequest));
 
@@ -347,13 +350,13 @@ public class OpcuaProtocolLogic extends Plc4xProtocolBase<OpcuaAPU> implements H
         ExpandedNodeId expandedNodeId = new ExpandedNodeId(false,           //Namespace Uri Specified
             false,            //Server Index Specified
             new NodeIdFourByte((short) 0, Integer.valueOf(openSecureChannelRequest.getIdentifier())),
-            NULL_STRING,
-            1L);
+            null,
+            null);
 
 
         try {
             WriteBuffer buffer = new WriteBuffer(openSecureChannelRequest.getLengthInBytes(), true);
-            ExtensionObjectIO.staticSerialize(buffer, new ExtensionObject(true,
+            ExtensionObjectIO.staticSerialize(buffer, new ExtensionObject(
                 expandedNodeId,
                 openSecureChannelRequest));
 
@@ -427,12 +430,12 @@ public class OpcuaProtocolLogic extends Plc4xProtocolBase<OpcuaAPU> implements H
         ExpandedNodeId expandedNodeId = new ExpandedNodeId(false,           //Namespace Uri Specified
             false,            //Server Index Specified
             new NodeIdFourByte((short) 0, Integer.valueOf(endpointsRequest.getIdentifier())),
-            NULL_STRING,
-            1L);
+            null,
+            null);
 
         try {
             WriteBuffer buffer = new WriteBuffer(endpointsRequest.getLengthInBytes(), true);
-            ExtensionObjectIO.staticSerialize(buffer, new ExtensionObject(true,
+            ExtensionObjectIO.staticSerialize(buffer, new ExtensionObject(
                 expandedNodeId,
                 endpointsRequest));
 
@@ -502,15 +505,15 @@ public class OpcuaProtocolLogic extends Plc4xProtocolBase<OpcuaAPU> implements H
         ExpandedNodeId expandedNodeId = new ExpandedNodeId(false,           //Namespace Uri Specified
             false,            //Server Index Specified
             new NodeIdFourByte((short) 0, Integer.valueOf(closeSecureChannelRequest.getIdentifier())),
-            NULL_STRING,
-            1L);
+            null,
+            null);
 
         OpcuaCloseRequest closeRequest = new OpcuaCloseRequest(FINAL_CHUNK,
             channelId.get(),
             tokenId.get(),
             transactionId,
             transactionId,
-            new ExtensionObject(true,
+            new ExtensionObject(
                 expandedNodeId,
                 closeSecureChannelRequest));
 
@@ -559,14 +562,16 @@ public class OpcuaProtocolLogic extends Plc4xProtocolBase<OpcuaAPU> implements H
         ExpandedNodeId expandedNodeId = new ExpandedNodeId(false,           //Namespace Uri Specified
             false,            //Server Index Specified
             new NodeIdFourByte((short) 0, Integer.valueOf(openSecureChannelRequest.getIdentifier())),
-            NULL_STRING,
-            1L);
+            null,
+            null);
+
+        ExtensionObject extObject = new ExtensionObject(
+            expandedNodeId,
+            openSecureChannelRequest);
 
         try {
-            WriteBuffer buffer = new WriteBuffer(openSecureChannelRequest.getLengthInBytes(), true);
-            ExtensionObjectIO.staticSerialize(buffer, new ExtensionObject(true,
-                expandedNodeId,
-                openSecureChannelRequest));
+            WriteBuffer buffer = new WriteBuffer(extObject.getLengthInBytes(), true);
+            ExtensionObjectIO.staticSerialize(buffer, extObject);
 
             OpcuaOpenRequest openRequest = new OpcuaOpenRequest(FINAL_CHUNK,
                 0,
@@ -674,14 +679,16 @@ public class OpcuaProtocolLogic extends Plc4xProtocolBase<OpcuaAPU> implements H
         ExpandedNodeId expandedNodeId = new ExpandedNodeId(false,           //Namespace Uri Specified
             false,            //Server Index Specified
             new NodeIdFourByte((short) 0, Integer.valueOf(createSessionRequest.getIdentifier())),
-            NULL_STRING,
-            1L);
+            null,
+            null);
+
+        ExtensionObject extObject = new ExtensionObject(
+            expandedNodeId,
+            createSessionRequest);
 
         try {
-            WriteBuffer buffer = new WriteBuffer(createSessionRequest.getLengthInBytes(), true);
-            ExtensionObjectIO.staticSerialize(buffer, new ExtensionObject(true,
-                expandedNodeId,
-                createSessionRequest));
+            WriteBuffer buffer = new WriteBuffer(extObject.getLengthInBytes(), true);
+            ExtensionObjectIO.staticSerialize(buffer, extObject);
 
             OpcuaMessageRequest messageRequest = new OpcuaMessageRequest(FINAL_CHUNK,
                 channelId.get(),
@@ -731,10 +738,12 @@ public class OpcuaProtocolLogic extends Plc4xProtocolBase<OpcuaAPU> implements H
         senderCertificate = sessionResponse.getServerCertificate().getStringValue();
         senderNonce = sessionResponse.getServerNonce().getStringValue();
 
-        for (EndpointDescription endpointDescription: (EndpointDescription[]) sessionResponse.getServerEndpoints()) {
+        for (ExtensionObjectDefinition extensionObject: sessionResponse.getServerEndpoints()) {
+            EndpointDescription endpointDescription = (EndpointDescription) extensionObject;
             LOGGER.info("{} - {}", endpointDescription.getEndpointUrl().getStringValue(), this.endpoint.getStringValue());
             if (endpointDescription.getEndpointUrl().getStringValue().equals(this.endpoint.getStringValue())) {
-                for (UserTokenPolicy identityToken : (UserTokenPolicy[]) endpointDescription.getUserIdentityTokens()) {
+                for (ExtensionObjectDefinition userTokenCast :  endpointDescription.getUserIdentityTokens()) {
+                    UserTokenPolicy identityToken = (UserTokenPolicy) userTokenCast;
                     if (identityToken.getTokenType() == UserTokenType.userTokenTypeAnonymous) {
                         if (this.username == null) {
                             policyId = identityToken.getPolicyId();
@@ -798,14 +807,16 @@ public class OpcuaProtocolLogic extends Plc4xProtocolBase<OpcuaAPU> implements H
         ExpandedNodeId expandedNodeId = new ExpandedNodeId(false,           //Namespace Uri Specified
             false,            //Server Index Specified
             new NodeIdFourByte((short) 0, Integer.valueOf(activateSessionRequest.getIdentifier())),
-            NULL_STRING,
-            1L);
+            null,
+            null);
+
+        ExtensionObject extObject = new ExtensionObject(
+            expandedNodeId,
+            activateSessionRequest);
 
         try {
-            WriteBuffer buffer = new WriteBuffer(activateSessionRequest.getLengthInBytes(), true);
-            ExtensionObjectIO.staticSerialize(buffer, new ExtensionObject(true,
-                expandedNodeId,
-                activateSessionRequest));
+            WriteBuffer buffer = new WriteBuffer(extObject.getLengthInBytes(), true);
+            ExtensionObjectIO.staticSerialize(buffer, extObject);
 
             OpcuaMessageRequest activateMessageRequest = new OpcuaMessageRequest(FINAL_CHUNK,
                 channelId.get(),
@@ -887,14 +898,14 @@ public class OpcuaProtocolLogic extends Plc4xProtocolBase<OpcuaAPU> implements H
         ExpandedNodeId expandedNodeId = new ExpandedNodeId(false,           //Namespace Uri Specified
             false,            //Server Index Specified
             new NodeIdFourByte((short) 0, Integer.valueOf(opcuaReadRequest.getIdentifier())),
-            NULL_STRING,
-            1L);
+            null,
+            null);
 
         int transactionId = getTransactionIdentifier();
 
         try {
             WriteBuffer buffer = new WriteBuffer(opcuaReadRequest.getLengthInBytes(), true);
-            ExtensionObjectIO.staticSerialize(buffer, new ExtensionObject(true,
+            ExtensionObjectIO.staticSerialize(buffer, new ExtensionObject(
                 expandedNodeId,
                 opcuaReadRequest));
 
@@ -939,13 +950,13 @@ public class OpcuaProtocolLogic extends Plc4xProtocolBase<OpcuaAPU> implements H
         System.out.println(field.getIdentifierType());
         System.out.println(field.getIdentifier());
         if (field.getIdentifierType() == OpcuaIdentifierType.BINARY_IDENTIFIER) {
-            nodeId = new NodeId(new NodeIdTwoByte((short) field.getNamespace(), Short.valueOf(field.getIdentifier())));
+            nodeId = new NodeId(new NodeIdTwoByte(Short.valueOf(field.getIdentifier())));
         } else if (field.getIdentifierType() == OpcuaIdentifierType.NUMBER_IDENTIFIER) {
             nodeId = new NodeId(new NodeIdNumeric((short) field.getNamespace(), Long.valueOf(field.getIdentifier())));
         } else if (field.getIdentifierType() == OpcuaIdentifierType.GUID_IDENTIFIER) {
             nodeId = new NodeId(new NodeIdGuid((short) field.getNamespace(), field.getIdentifier()));
         } else if (field.getIdentifierType() == OpcuaIdentifierType.STRING_IDENTIFIER) {
-            nodeId = new NodeId(new NodeIdString((short) field.getNamespace(), field.getIdentifier()));
+            nodeId = new NodeId(new NodeIdString((short) field.getNamespace(), new PascalString(field.getIdentifier())));
         }
         return nodeId;
     }
@@ -1421,14 +1432,14 @@ public class OpcuaProtocolLogic extends Plc4xProtocolBase<OpcuaAPU> implements H
         ExpandedNodeId expandedNodeId = new ExpandedNodeId(false,           //Namespace Uri Specified
             false,            //Server Index Specified
             new NodeIdFourByte((short) 0, Integer.valueOf(opcuaWriteRequest.getIdentifier())),
-            NULL_STRING,
-            1L);
+            null,
+            null);
 
         int transactionId = getTransactionIdentifier();
 
         try {
             WriteBuffer buffer = new WriteBuffer(opcuaWriteRequest.getLengthInBytes(), true);
-            ExtensionObjectIO.staticSerialize(buffer, new ExtensionObject(true,
+            ExtensionObjectIO.staticSerialize(buffer, new ExtensionObject(
                 expandedNodeId,
                 opcuaWriteRequest));
 
@@ -1632,12 +1643,12 @@ public class OpcuaProtocolLogic extends Plc4xProtocolBase<OpcuaAPU> implements H
         ExpandedNodeId expandedNodeId = new ExpandedNodeId(false,           //Namespace Uri Specified
             false,            //Server Index Specified
             new NodeIdFourByte((short) 0, Integer.valueOf(createSubscriptionRequest.getIdentifier())),
-            NULL_STRING,
-            1L);
+            null,
+            null);
 
         try {
             WriteBuffer buffer = new WriteBuffer(createSubscriptionRequest.getLengthInBytes(), true);
-            ExtensionObjectIO.staticSerialize(buffer, new ExtensionObject(true,
+            ExtensionObjectIO.staticSerialize(buffer, new ExtensionObject(
                 expandedNodeId,
                 createSubscriptionRequest));
 
@@ -1704,12 +1715,12 @@ public class OpcuaProtocolLogic extends Plc4xProtocolBase<OpcuaAPU> implements H
         ExpandedNodeId expandedNodeId = new ExpandedNodeId(false,           //Namespace Uri Specified
             false,            //Server Index Specified
             new NodeIdFourByte((short) 0, Integer.valueOf(createMonitoredItemsRequest.getIdentifier())),
-            NULL_STRING,
-            1L);
+            null,
+            null);
 
         try {
             WriteBuffer buffer = new WriteBuffer(createMonitoredItemsRequest.getLengthInBytes(), true);
-            ExtensionObjectIO.staticSerialize(buffer, new ExtensionObject(true,
+            ExtensionObjectIO.staticSerialize(buffer, new ExtensionObject(
                 expandedNodeId,
                 createMonitoredItemsRequest));
 
@@ -1877,7 +1888,7 @@ public class OpcuaProtocolLogic extends Plc4xProtocolBase<OpcuaAPU> implements H
                     NULL_STRING,
                     1L);
 
-                return new ExtensionObject(true,
+                return new ExtensionObject(
                     extExpandedNodeId,
                     new UserIdentityToken(anonymousIdentityToken));
             case "username":
@@ -1905,7 +1916,7 @@ public class OpcuaProtocolLogic extends Plc4xProtocolBase<OpcuaAPU> implements H
                     NULL_STRING,
                     1L);
 
-                return new ExtensionObject(true,
+                return new ExtensionObject(
                     extExpandedNodeId,
                     new UserIdentityToken(userNameIdentityToken));
         }

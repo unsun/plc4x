@@ -144,20 +144,28 @@
     [optional uint 32 'serverIndex' 'serverIndexSpecified']
 ]
 
+[type 'ExtensionHeader'
+    [reserved int 5 '0x00']
+    [simple bit 'xmlbody']
+    [simple bit 'binaryBody]
+]
+
 [type 'ExtensionObject'
     //A serialized object prefixed with its data type identifier.
-    [reserved uint 5 '0x00']
-    [const bit 'xmlBody' 'false']
-    [const bit 'binaryBody' 'true']
-    [simple bit 'typeIdSpecified']
-    [optional ExpandedNodeId 'typeId' 'typeIdSpecified']
+    [simple ExpandedNodeId 'typeId']
     [virtual string '-1' 'identifier' 'typeId.identifier']
-    [implicit int 32 'bodyLength' 'body.lengthInBytes']
     [simple ExtensionObjectDefinition 'body' ['identifier']]
 ]
 
 [discriminatedType 'ExtensionObjectDefinition' [string '-1' 'identifier']
     [typeSwitch 'identifier'
+        ['0' NullExtension
+            [reserved int 5 '0x00']
+            [simple bit 'xmlbody']
+            [simple bit 'binaryBody]
+            [simple bit 'typeIdSpecified']
+        ]
+
         <xsl:for-each select="/opc:TypeDictionary/opc:StructuredType[(@BaseType = 'ua:ExtensionObject') and not(@Name = 'UserIdentityToken') and not(@Name = 'PublishedDataSetDataType') and not(@Name = 'DataSetReaderDataType')]">
             <xsl:message><xsl:value-of select="@Name"/></xsl:message>
             <xsl:variable name="extensionName" select="@Name"/>
@@ -307,7 +315,6 @@
     [discriminator NodeIdType 'nodeType']
     [typeSwitch 'nodeType'
         ['nodeIdTypeTwoByte' NodeIdTwoByte
-            [simple uint 8 'namespaceIndex']
             [simple uint 8 'id']
             [virtual string '-1' 'identifier' 'id']
         ]
@@ -323,8 +330,8 @@
         ]
         ['nodeIdTypeString' NodeIdString
             [simple uint 16 'namespaceIndex']
-            [simple string '-1' 'id']
-            [virtual string '-1' 'identifier' 'id']
+            [simple PascalString 'id']
+            [virtual string '-1' 'identifier' 'id.stringValue']
         ]
         ['nodeIdTypeGuid' NodeIdGuid
             [simple uint 16 'namespaceIndex']
@@ -333,8 +340,8 @@
         ]
         ['nodeIdTypeByteString' NodeIdByteString
             [simple uint 16 'namespaceIndex']
-            [simple uint 32 'id']
-            [virtual string '-1' 'identifier' 'id']
+            [simple PascalByteString 'id']
+            [virtual string '-1' 'identifier' 'id.stringValue']
         ]
     ]
 ]
@@ -353,7 +360,7 @@
 
 [type 'PascalByteString'
     [simple int 32 'stringLength']
-    [array int 8 'stringValue' count 'stringLength == -1 ? 0 : stringLength * 8' ]
+    [array int 8 'stringValue' count 'stringLength == -1 ? 0 : stringLength' ]
 ]
 
 [type 'Structure'
