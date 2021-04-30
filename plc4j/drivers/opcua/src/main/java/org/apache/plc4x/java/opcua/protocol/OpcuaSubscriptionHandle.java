@@ -131,6 +131,7 @@ public class OpcuaSubscriptionHandle extends DefaultPlcSubscriptionHandle {
                         WriteBuffer buffer = new WriteBuffer(publishRequest.getLengthInBytes(), true);
                         ExtensionObjectIO.staticSerialize(buffer, new ExtensionObject(
                             extExpandedNodeId,
+                            null,
                             publishRequest));
 
                         int transactionId = this.plcSubscriber.getTransactionIdentifier();
@@ -152,7 +153,7 @@ public class OpcuaSubscriptionHandle extends DefaultPlcSubscriptionHandle {
                             .handle(opcuaResponse -> {
                                 PublishResponse responseMessage = null;
                                 try {
-                                    responseMessage = (PublishResponse) ExtensionObjectIO.staticParse(new ReadBuffer(opcuaResponse.getMessage(), true)).getBody();
+                                    responseMessage = (PublishResponse) ExtensionObjectIO.staticParse(new ReadBuffer(opcuaResponse.getMessage(), true), false).getBody();
                                 } catch (ParseException e) {
                                     e.printStackTrace();
                                 }

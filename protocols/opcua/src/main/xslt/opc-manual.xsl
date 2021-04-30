@@ -99,7 +99,7 @@
            [simple          int 32             'secureTokenId']
            [simple          int 32             'sequenceNumber']
            [simple          int 32             'requestId']
-           [simple          ExtensionObject       'message']
+           [simple          ExtensionObject       'message' ['false']]
        ]
        ['MSG','false'     OpcuaMessageRequest
            [simple          string '8'         'chunk']
@@ -150,9 +150,17 @@
     [simple bit 'binaryBody]
 ]
 
-[type 'ExtensionObject'
+[type 'ExtensionObjectEncodingMask'
+    [reserved int 5 '0x00']
+    [simple bit 'typeIdSpecified']
+    [simple bit 'xmlbody']
+    [simple bit 'binaryBody]
+]
+
+[type 'ExtensionObject' [bit 'includeEncodingMask']
     //A serialized object prefixed with its data type identifier.
     [simple ExpandedNodeId 'typeId']
+    [optional ExtensionObjectEncodingMask 'encodingMask' 'includeEncodingMask']
     [virtual string '-1' 'identifier' 'typeId.identifier']
     [simple ExtensionObjectDefinition 'body' ['identifier']]
 ]
@@ -160,10 +168,6 @@
 [discriminatedType 'ExtensionObjectDefinition' [string '-1' 'identifier']
     [typeSwitch 'identifier'
         ['0' NullExtension
-            [reserved int 5 '0x00']
-            [simple bit 'xmlbody']
-            [simple bit 'binaryBody]
-            [simple bit 'typeIdSpecified']
         ]
 
         <xsl:for-each select="/opc:TypeDictionary/opc:StructuredType[(@BaseType = 'ua:ExtensionObject') and not(@Name = 'UserIdentityToken') and not(@Name = 'PublishedDataSetDataType') and not(@Name = 'DataSetReaderDataType')]">
@@ -173,16 +177,16 @@
         </xsl:for-each>
 
         ['316' UserIdentityToken
-            [simple UserIdentityTokenDefinition 'userIdentityTokenDefinition']
+            [implicit int 32 'policyLength' 'policyId.lengthInBytes']
+            [simple PascalString 'policyId']
+            [simple UserIdentityTokenDefinition 'userIdentityTokenDefinition' ['policyId.stringValue']]
         ]
     ]
 ]
 
-[discriminatedType 'UserIdentityTokenDefinition'
-    [implicit int 32 'policyIdLength' 'policyId.length']
-    [discriminator string '-1' 'policyId']
-    [typeSwitch 'policyId'
-        ['none' AnonymousIdentityToken
+[discriminatedType 'UserIdentityTokenDefinition' [string '-1' 'identifier']
+    [typeSwitch 'identifier'
+        ['anonymous' AnonymousIdentityToken
         ]
         ['username' UserNameIdentityToken
             [simple PascalString 'userName']
@@ -291,7 +295,7 @@
         ]
         ['22' VariantExtensionObject [bit 'arrayLengthSpecified']
             [optional int 32 'arrayLength' 'arrayLengthSpecified']
-            [array ExtensionObject 'value' count 'arrayLength == null ? 1 : arrayLength']
+            [array ExtensionObject 'value' count 'arrayLength == null ? 1 : arrayLength' ['true']]
         ]
         ['23' VariantDataValue [bit 'arrayLengthSpecified']
             [optional int 32 'arrayLength' 'arrayLengthSpecified']
