@@ -1196,29 +1196,29 @@ public class OpcuaProtocolLogic extends Plc4xProtocolBase<OpcuaAPU> implements H
 
         List<PlcValue> plcValueList = valueObject.getList();
         String dataType = field.getPlcDataType();
-        if (dataType.equals("IEC61131_NULL")) {
+        if (dataType.equals("NULL")) {
             if (plcValueList.get(0).getObject() instanceof Boolean) {
-                dataType = "IEC61131_BOOL";
+                dataType = "BOOL";
             } else if (plcValueList.get(0).getObject() instanceof Byte) {
-                dataType = "IEC61131_SINT";
+                dataType = "SINT";
             } else if (plcValueList.get(0).getObject() instanceof Short) {
-                dataType = "IEC61131_INT";
+                dataType = "INT";
             } else if (plcValueList.get(0).getObject() instanceof Integer) {
-                dataType = "IEC61131_DINT";
+                dataType = "DINT";
             } else if (plcValueList.get(0).getObject() instanceof Long) {
-                dataType = "IEC61131_LINT";
+                dataType = "LINT";
             } else if (plcValueList.get(0).getObject() instanceof Float) {
-                dataType = "IEC61131_REAL";
+                dataType = "REAL";
             } else if (plcValueList.get(0).getObject() instanceof Double) {
-                dataType = "IEC61131_LREAL";
+                dataType = "LREAL";
             } else if (plcValueList.get(0).getObject() instanceof String) {
-                dataType = "IEC61131_STRING";
+                dataType = "STRING";
             }
         }
         int length = valueObject.getLength();
         switch (dataType) {
-            case "IEC61131_BOOL":
-            case "IEC61131_BIT":
+            case "BOOL":
+            case "BIT":
                 byte[] tmpBOOL = new byte[length];
                 for (int i = 0; i < length; i++) {
                     tmpBOOL[i] = valueObject.getIndex(i).getByte();
@@ -1229,11 +1229,11 @@ public class OpcuaProtocolLogic extends Plc4xProtocolBase<OpcuaAPU> implements H
                     null,
                     length == 1 ? null : length,
                     tmpBOOL);
-            case "IEC61131_BYTE":
-            case "IEC61131_BITARR8":
-            case "IEC61131_USINT":
-            case "IEC61131_UINT8":
-            case "IEC61131_BIT8":
+            case "BYTE":
+            case "BITARR8":
+            case "USINT":
+            case "UINT8":
+            case "BIT8":
                 short[] tmpBYTE = new short[length];
                 for (int i = 0; i < length; i++) {
                     tmpBYTE[i] = valueObject.getIndex(i).getByte();
@@ -1244,8 +1244,8 @@ public class OpcuaProtocolLogic extends Plc4xProtocolBase<OpcuaAPU> implements H
                     null,
                     length == 1 ? null : length,
                     tmpBYTE);
-            case "IEC61131_SINT":
-            case "IEC61131_INT8":
+            case "SINT":
+            case "INT8":
                 byte[] tmpSINT = new byte[length];
                 for (int i = 0; i < length; i++) {
                     tmpSINT[i] = valueObject.getIndex(i).getByte();
@@ -1256,8 +1256,8 @@ public class OpcuaProtocolLogic extends Plc4xProtocolBase<OpcuaAPU> implements H
                     null,
                     length == 1 ? null : length,
                     tmpSINT);
-            case "IEC61131_INT":
-            case "IEC61131_INT16":
+            case "INT":
+            case "INT16":
                 short[] tmpINT16 = new short[length];
                 for (int i = 0; i < length; i++) {
                     tmpINT16[i] = valueObject.getIndex(i).getShort();
@@ -1268,10 +1268,10 @@ public class OpcuaProtocolLogic extends Plc4xProtocolBase<OpcuaAPU> implements H
                     null,
                     length == 1 ? null : length,
                     tmpINT16);
-            case "IEC61131_UINT":
-            case "IEC61131_UINT16":
-            case "IEC61131_WORD":
-            case "IEC61131_BITARR16":
+            case "UINT":
+            case "UINT16":
+            case "WORD":
+            case "BITARR16":
                 int[] tmpUINT = new int[length];
                 for (int i = 0; i < length; i++) {
                     tmpUINT[i] = valueObject.getIndex(i).getInt();
@@ -1282,8 +1282,8 @@ public class OpcuaProtocolLogic extends Plc4xProtocolBase<OpcuaAPU> implements H
                     null,
                     length == 1 ? null : length,
                     tmpUINT);
-            case "IEC61131_DINT":
-            case "IEC61131_INT32":
+            case "DINT":
+            case "INT32":
                 int[] tmpDINT = new int[length];
                 for (int i = 0; i < length; i++) {
                     tmpDINT[i] = valueObject.getIndex(i).getInt();
@@ -1294,10 +1294,10 @@ public class OpcuaProtocolLogic extends Plc4xProtocolBase<OpcuaAPU> implements H
                     null,
                     length == 1 ? null : length,
                     tmpDINT);
-            case "IEC61131_UDINT":
-            case "IEC61131_UINT32":
-            case "IEC61131_DWORD":
-            case "IEC61131_BITARR32":
+            case "UDINT":
+            case "UINT32":
+            case "DWORD":
+            case "BITARR32":
                 long[] tmpUDINT = new long[length];
                 for (int i = 0; i < length; i++) {
                     tmpUDINT[i] = valueObject.getIndex(i).getLong();
@@ -1308,8 +1308,8 @@ public class OpcuaProtocolLogic extends Plc4xProtocolBase<OpcuaAPU> implements H
                     null,
                     length == 1 ? null : length,
                     tmpUDINT);
-            case "IEC61131_LINT":
-            case "IEC61131_INT64":
+            case "LINT":
+            case "INT64":
                 long[] tmpLINT = new long[length];
                 for (int i = 0; i < length; i++) {
                     tmpLINT[i] = valueObject.getIndex(i).getLong();
@@ -1320,10 +1320,10 @@ public class OpcuaProtocolLogic extends Plc4xProtocolBase<OpcuaAPU> implements H
                     null,
                     length == 1 ? null : length,
                     tmpLINT);
-            case "IEC61131_ULINT":
-            case "IEC61131_UINT64":
-            case "IEC61131_LWORD":
-            case "IEC61131_BITARR64":
+            case "ULINT":
+            case "UINT64":
+            case "LWORD":
+            case "BITARR64":
                 BigInteger[] tmpULINT = new BigInteger[length];
                 for (int i = 0; i < length; i++) {
                     tmpULINT[i] = valueObject.getIndex(i).getBigInteger();
@@ -1334,8 +1334,8 @@ public class OpcuaProtocolLogic extends Plc4xProtocolBase<OpcuaAPU> implements H
                     null,
                     length == 1 ? null : length,
                     tmpULINT);
-            case "IEC61131_REAL":
-            case "IEC61131_FLOAT":
+            case "REAL":
+            case "FLOAT":
                 float[] tmpREAL = new float[length];
                 for (int i = 0; i < length; i++) {
                     tmpREAL[i] = valueObject.getIndex(i).getFloat();
@@ -1346,8 +1346,8 @@ public class OpcuaProtocolLogic extends Plc4xProtocolBase<OpcuaAPU> implements H
                     null,
                     length == 1 ? null : length,
                     tmpREAL);
-            case "IEC61131_LREAL":
-            case "IEC61131_DOUBLE":
+            case "LREAL":
+            case "DOUBLE":
                 double[] tmpLREAL = new double[length];
                 for (int i = 0; i < length; i++) {
                     tmpLREAL[i] = valueObject.getIndex(i).getDouble();
@@ -1358,11 +1358,11 @@ public class OpcuaProtocolLogic extends Plc4xProtocolBase<OpcuaAPU> implements H
                     null,
                     length == 1 ? null : length,
                     tmpLREAL);
-            case "IEC61131_CHAR":
-            case "IEC61131_WCHAR":
-            case "IEC61131_STRING":
-            case "IEC61131_WSTRING":
-            case "IEC61131_STRING16":
+            case "CHAR":
+            case "WCHAR":
+            case "STRING":
+            case "WSTRING":
+            case "STRING16":
                 PascalString[] tmpString = new PascalString[length];
                 for (int i = 0; i < length; i++) {
                     String s = valueObject.getIndex(i).getString();
@@ -1374,7 +1374,7 @@ public class OpcuaProtocolLogic extends Plc4xProtocolBase<OpcuaAPU> implements H
                     null,
                     length == 1 ? null : length,
                     tmpString);
-            case "IEC61131_DATE_AND_TIME":
+            case "DATE_AND_TIME":
                 long[] tmpDateTime = new long[length];
                 for (int i = 0; i < length; i++) {
                     tmpDateTime[i] = valueObject.getIndex(i).getDateTime().toEpochSecond(ZoneOffset.UTC);
@@ -1449,12 +1449,14 @@ public class OpcuaProtocolLogic extends Plc4xProtocolBase<OpcuaAPU> implements H
 
         int transactionId = getTransactionIdentifier();
 
+        ExtensionObject extObject = new ExtensionObject(
+            expandedNodeId,
+            null,
+            opcuaWriteRequest);
+
         try {
-            WriteBuffer buffer = new WriteBuffer(opcuaWriteRequest.getLengthInBytes(), true);
-            ExtensionObjectIO.staticSerialize(buffer, new ExtensionObject(
-                expandedNodeId,
-                null,
-                opcuaWriteRequest));
+            WriteBuffer buffer = new WriteBuffer(extObject.getLengthInBytes(), true);
+            ExtensionObjectIO.staticSerialize(buffer, extObject);
 
             OpcuaMessageRequest writeMessageRequest = new OpcuaMessageRequest(FINAL_CHUNK,
                 channelId.get(),
@@ -1499,6 +1501,7 @@ public class OpcuaProtocolLogic extends Plc4xProtocolBase<OpcuaAPU> implements H
         Iterator<String> responseIterator = request.getFieldNames().iterator();
         for (int i = 0; i < request.getFieldNames().size(); i++ ) {
             String fieldName = responseIterator.next();
+            LOGGER.info("Bad Node Id - {}", OpcuaStatusCodes.BadNodeIdUnknown.getValue());
             OpcuaStatusCodes statusCode = OpcuaStatusCodes.enumForValue(results[i].getStatusCode());
             switch (statusCode) {
                 case Good:

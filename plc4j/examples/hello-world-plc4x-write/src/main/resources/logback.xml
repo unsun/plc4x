@@ -29,11 +29,7 @@
     </encoder>
   </appender>
 
-  <logger name="org.apache.plc4x.java.examples.helloplc4x.write.HelloPlc4xWrite" level="info"/>
-
-
-  <root level="warn">
+  <root level="trace">
     <appender-ref ref="STDOUT" />
   </root>
-
 </configuration>
