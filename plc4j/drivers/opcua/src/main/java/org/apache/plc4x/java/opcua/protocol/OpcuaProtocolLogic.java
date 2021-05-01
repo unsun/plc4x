@@ -1662,12 +1662,14 @@ public class OpcuaProtocolLogic extends Plc4xProtocolBase<OpcuaAPU> implements H
             null,
             null);
 
+        ExtensionObject extObject = new ExtensionObject(
+            expandedNodeId,
+            null,
+            createSubscriptionRequest);
+
         try {
-            WriteBuffer buffer = new WriteBuffer(createSubscriptionRequest.getLengthInBytes(), true);
-            ExtensionObjectIO.staticSerialize(buffer, new ExtensionObject(
-                expandedNodeId,
-                null,
-                createSubscriptionRequest));
+            WriteBuffer buffer = new WriteBuffer(extObject.getLengthInBytes(), true);
+            ExtensionObjectIO.staticSerialize(buffer, extObject);
 
             int transactionId = getTransactionIdentifier();
 
@@ -1735,12 +1737,14 @@ public class OpcuaProtocolLogic extends Plc4xProtocolBase<OpcuaAPU> implements H
             null,
             null);
 
+        ExtensionObject extObject = new ExtensionObject(
+            expandedNodeId,
+            null,
+            createMonitoredItemsRequest);
+
         try {
-            WriteBuffer buffer = new WriteBuffer(createMonitoredItemsRequest.getLengthInBytes(), true);
-            ExtensionObjectIO.staticSerialize(buffer, new ExtensionObject(
-                expandedNodeId,
-                null,
-                createMonitoredItemsRequest));
+            WriteBuffer buffer = new WriteBuffer(extObject.getLengthInBytes(), true);
+            ExtensionObjectIO.staticSerialize(buffer, extObject);
 
             int transactionId = getTransactionIdentifier();
 

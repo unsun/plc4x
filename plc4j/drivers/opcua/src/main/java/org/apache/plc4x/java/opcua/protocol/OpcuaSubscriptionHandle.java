@@ -124,15 +124,17 @@ public class OpcuaSubscriptionHandle extends DefaultPlcSubscriptionHandle {
                     ExpandedNodeId extExpandedNodeId = new ExpandedNodeId(false,           //Namespace Uri Specified
                         false,            //Server Index Specified
                         new NodeIdFourByte((short) 0, Integer.valueOf(publishRequest.getIdentifier())),
-                        OpcuaProtocolLogic.NULL_STRING,
-                        1L);
+                        null,
+                        null);
+
+                    ExtensionObject extObject = new ExtensionObject(
+                        extExpandedNodeId,
+                        null,
+                        publishRequest);
 
                     try {
-                        WriteBuffer buffer = new WriteBuffer(publishRequest.getLengthInBytes(), true);
-                        ExtensionObjectIO.staticSerialize(buffer, new ExtensionObject(
-                            extExpandedNodeId,
-                            null,
-                            publishRequest));
+                        WriteBuffer buffer = new WriteBuffer(extObject.getLengthInBytes(), true);
+                        ExtensionObjectIO.staticSerialize(buffer, extObject);
 
                         int transactionId = this.plcSubscriber.getTransactionIdentifier();
 

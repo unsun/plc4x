@@ -176,6 +176,24 @@
             <xsl:apply-templates select="$file/node:UANodeSet/node:UADataType[@BrowseName=$extensionName]"/>
         </xsl:for-each>
 
+        ['811' DataChangeNotification
+            [implicit int 32 'notificationLength' 'lengthInBytes']
+            [simple int 32 'noOfMonitoredItems']
+            [array ExtensionObjectDefinition  'monitoredItems' count 'noOfMonitoredItems' ['808']]
+            [simple int 32 'noOfDiagnosticInfos']
+            [array DiagnosticInfo  'diagnosticInfos' count 'noOfDiagnosticInfos']
+        ]
+        ['916' EventNotificationList
+            [implicit int 32 'notificationLength' 'lengthInBytes']
+            [simple int 32 'noOfEvents']
+            [array ExtensionObjectDefinition  'events' count 'noOfEvents' ['919']]
+        ]
+        ['820' StatusChangeNotification
+            [implicit int 32 'notificationLength' 'lengthInBytes']
+            [simple StatusCode 'status']
+            [simple DiagnosticInfo 'diagnosticInfo']
+        ]
+
         ['316' UserIdentityToken
             [implicit int 32 'policyLength' 'policyId.lengthInBytes']
             [simple PascalString 'policyId']
