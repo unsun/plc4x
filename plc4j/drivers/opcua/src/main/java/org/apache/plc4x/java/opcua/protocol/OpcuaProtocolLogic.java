@@ -229,7 +229,7 @@ public class OpcuaProtocolLogic extends Plc4xProtocolBase<OpcuaAPU> implements H
                 .check(p -> p.getMessage() instanceof OpcuaMessageResponse)
                 .unwrap(p -> (OpcuaMessageResponse) p.getMessage())
                 .handle(opcuaMessageResponse -> {
-                        LOGGER.info("Got Close Session Response Connection Response" + opcuaMessageResponse.toString());
+                        LOGGER.trace("Got Close Session Response Connection Response" + opcuaMessageResponse.toString());
                         onDisconnectCloseSecureChannel(context);
                     });
         } catch (ParseException e) {
@@ -272,7 +272,7 @@ public class OpcuaProtocolLogic extends Plc4xProtocolBase<OpcuaAPU> implements H
             .check(p -> p.getMessage() instanceof OpcuaMessageResponse)
             .unwrap(p -> (OpcuaMessageResponse) p.getMessage())
             .handle(opcuaMessageResponse -> {
-                LOGGER.info("Got Close Secure Channel Response" + opcuaMessageResponse.toString());
+                LOGGER.trace("Got Close Secure Channel Response" + opcuaMessageResponse.toString());
             });
         context.fireDisconnected();
     }
@@ -528,7 +528,7 @@ public class OpcuaProtocolLogic extends Plc4xProtocolBase<OpcuaAPU> implements H
             .check(p -> p.getMessage() instanceof OpcuaMessageResponse)
             .unwrap(p -> (OpcuaMessageResponse) p.getMessage())
             .handle(opcuaMessageResponse -> {
-                LOGGER.info("Got Close Secure Channel Response" + opcuaMessageResponse.toString());
+                LOGGER.trace("Got Close Secure Channel Response" + opcuaMessageResponse.toString());
                 // Send an event that connection setup is complete.
                 context.fireDiscovered(this.configuration);
             });
@@ -748,7 +748,7 @@ public class OpcuaProtocolLogic extends Plc4xProtocolBase<OpcuaAPU> implements H
 
         for (ExtensionObjectDefinition extensionObject: sessionResponse.getServerEndpoints()) {
             EndpointDescription endpointDescription = (EndpointDescription) extensionObject;
-            LOGGER.info("{} - {}", endpointDescription.getEndpointUrl().getStringValue(), this.endpoint.getStringValue());
+            LOGGER.trace("{} - {}", endpointDescription.getEndpointUrl().getStringValue(), this.endpoint.getStringValue());
             if (endpointDescription.getEndpointUrl().getStringValue().equals(this.endpoint.getStringValue())) {
                 for (ExtensionObjectDefinition userTokenCast :  endpointDescription.getUserIdentityTokens()) {
                     UserTokenPolicy identityToken = (UserTokenPolicy) userTokenCast;
@@ -862,13 +862,13 @@ public class OpcuaProtocolLogic extends Plc4xProtocolBase<OpcuaAPU> implements H
 
                 });
         } catch (ParseException e) {
-            LOGGER.info("Unable to serialise the ActivateSessionRequest");
+            LOGGER.error("Unable to serialise the ActivateSessionRequest");
         }
     }
 
     @Override
     public CompletableFuture<PlcReadResponse> read(PlcReadRequest readRequest) {
-        LOGGER.info("Reading Value");
+        LOGGER.trace("Reading Value");
         CompletableFuture<PlcReadResponse> future = new CompletableFuture<>();
         DefaultPlcReadRequest request = (DefaultPlcReadRequest) readRequest;
 
@@ -939,7 +939,7 @@ public class OpcuaProtocolLogic extends Plc4xProtocolBase<OpcuaAPU> implements H
                     // Prepare the response.
                     PlcReadResponse response = null;
                     try {
-                        response = new DefaultPlcReadResponse(request, readResponse(request.getFieldNames(), (ReadResponse) ExtensionObjectIO.staticParse(new ReadBuffer(opcuaResponse.getMessage(), true), false).getBody()));
+                        response = new DefaultPlcReadResponse(request, readResponse(request.getFieldNames(), ((ReadResponse) ExtensionObjectIO.staticParse(new ReadBuffer(opcuaResponse.getMessage(), true), false).getBody()).getResults()));
                     } catch (ParseException e) {
                         e.printStackTrace();
                     };
@@ -959,8 +959,6 @@ public class OpcuaProtocolLogic extends Plc4xProtocolBase<OpcuaAPU> implements H
 
     private NodeId generateNodeId(OpcuaField field) {
         NodeId nodeId = null;
-        System.out.println(field.getIdentifierType());
-        System.out.println(field.getIdentifier());
         if (field.getIdentifierType() == OpcuaIdentifierType.BINARY_IDENTIFIER) {
             nodeId = new NodeId(new NodeIdTwoByte(Short.valueOf(field.getIdentifier())));
         } else if (field.getIdentifierType() == OpcuaIdentifierType.NUMBER_IDENTIFIER) {
@@ -973,8 +971,7 @@ public class OpcuaProtocolLogic extends Plc4xProtocolBase<OpcuaAPU> implements H
         return nodeId;
     }
 
-    private Map<String, ResponseItem<PlcValue>> readResponse(LinkedHashSet<String> fieldNames, ReadResponse readResponse) {
-        DataValue[] results = readResponse.getResults();
+    public Map<String, ResponseItem<PlcValue>> readResponse(LinkedHashSet<String> fieldNames, DataValue[] results) {
 
         PlcResponseCode responseCode = PlcResponseCode.OK;
         Map<String, ResponseItem<PlcValue>> response = new HashMap<>();
@@ -983,7 +980,7 @@ public class OpcuaProtocolLogic extends Plc4xProtocolBase<OpcuaAPU> implements H
             PlcValue value = null;
             if (results[count].getValueSpecified()) {
                 Variant variant = results[count].getValue();
-                LOGGER.info("Response of type {}", variant.getClass().toString());
+                LOGGER.trace("Response of type {}", variant.getClass().toString());
                 if (variant instanceof VariantBoolean) {
                     byte[] array = ((VariantBoolean) variant).getValue();
                     int length = array.length;
@@ -1394,7 +1391,7 @@ public class OpcuaProtocolLogic extends Plc4xProtocolBase<OpcuaAPU> implements H
 
     @Override
     public CompletableFuture<PlcWriteResponse> write(PlcWriteRequest writeRequest) {
-        LOGGER.info("Writing Value");
+        LOGGER.trace("Writing Value");
         CompletableFuture<PlcWriteResponse> future = new CompletableFuture<>();
         DefaultPlcWriteRequest request = (DefaultPlcWriteRequest) writeRequest;
 
@@ -1488,7 +1485,7 @@ public class OpcuaProtocolLogic extends Plc4xProtocolBase<OpcuaAPU> implements H
                     transaction.endRequest();
                 }));
         } catch (ParseException e) {
-            LOGGER.info("Unable to serialize write request");
+            LOGGER.error("Unable to serialize write request");
         }
 
         return future;
@@ -1501,7 +1498,6 @@ public class OpcuaProtocolLogic extends Plc4xProtocolBase<OpcuaAPU> implements H
         Iterator<String> responseIterator = request.getFieldNames().iterator();
         for (int i = 0; i < request.getFieldNames().size(); i++ ) {
             String fieldName = responseIterator.next();
-            LOGGER.info("Bad Node Id - {}", OpcuaStatusCodes.BadNodeIdUnknown.getValue());
             OpcuaStatusCodes statusCode = OpcuaStatusCodes.enumForValue(results[i].getStatusCode());
             switch (statusCode) {
                 case Good:
@@ -1528,78 +1524,74 @@ public class OpcuaProtocolLogic extends Plc4xProtocolBase<OpcuaAPU> implements H
             long subscriptionId = -1L;
             List<MonitoredItemCreateRequest> requestList = new LinkedList<>();
 
+            ArrayList<String> fields = new ArrayList<>( subscriptionRequest.getFieldNames() );
+
+            long cycleTime = ((DefaultPlcSubscriptionField) subscriptionRequest.getField(fields.get(0))).getDuration().orElse(Duration.ofSeconds(1)).toMillis();
+
+            try {
+                CompletableFuture<CreateSubscriptionResponse> subscription = onSubscribeCreateSubscription(cycleTime);
+                CreateSubscriptionResponse response = subscription.get(REQUEST_TIMEOUT_LONG, TimeUnit.MILLISECONDS);
+                //Store this somewhere safe
+                subscriptionId = response.getSubscriptionId();
+
+                subscriptions.put(subscriptionId, new OpcuaSubscriptionHandle(this, subscriptionId, subscriptionRequest.getFieldNames(), cycleTime));
+
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                LOGGER.warn("Unable to subscribe Elements because of: {}", e.getMessage());
+            } catch (ExecutionException e) {
+                LOGGER.warn("Unable to subscribe Elements because of: {}", e.getMessage());
+            } catch (TimeoutException e) {
+                LOGGER.warn("Unable to subscribe Elements because of: {}", e.getMessage());
+            }
+
+
             for (String fieldName : subscriptionRequest.getFieldNames()) {
                 final DefaultPlcSubscriptionField fieldDefaultPlcSubscription = (DefaultPlcSubscriptionField) subscriptionRequest.getField(fieldName);
 
-
-                long cycleTime = fieldDefaultPlcSubscription.getDuration().orElse(Duration.ofSeconds(1)).toMillis();
-                PlcSubscriptionHandle subHandle = null;
-                PlcResponseCode responseCode = PlcResponseCode.ACCESS_DENIED;
-
-                try {
-                    if (isFirst) {
-                        CompletableFuture<CreateSubscriptionResponse> subscription = onSubscribeCreateSubscription(cycleTime);
-                        CreateSubscriptionResponse response = subscription.get(REQUEST_TIMEOUT_LONG, TimeUnit.MILLISECONDS);
-                        //Store this somewhere safe
-                        subscriptionId = response.getSubscriptionId();
-                        subscriptions.put(subscriptionId, new OpcuaSubscriptionHandle(this, subscriptionId, (OpcuaField) fieldDefaultPlcSubscription.getPlcField(), cycleTime));
-
-                        isFirst = false;
-                    }
-
-                    if (!(fieldDefaultPlcSubscription.getPlcField() instanceof OpcuaField)) {
-                        values.put(fieldName, new ResponseItem<>(PlcResponseCode.INVALID_ADDRESS, null));
-                    } else {
-                        values.put(fieldName, new ResponseItem<>(PlcResponseCode.OK,
-                            new OpcuaSubscriptionHandle(this, subscriptionId, (OpcuaField) fieldDefaultPlcSubscription.getPlcField(), cycleTime)));
-                    }
-
-                    NodeId idNode = generateNodeId((OpcuaField) fieldDefaultPlcSubscription.getPlcField());
-
-                    ReadValueId readValueId = new ReadValueId(
-                        idNode,
-                        0xD,
-                        NULL_STRING,
-                        new QualifiedName(0, NULL_STRING));
-
-                    MonitoringMode monitoringMode;
-                    switch (fieldDefaultPlcSubscription.getPlcSubscriptionType()) {
-                        case CYCLIC:
-                            monitoringMode = MonitoringMode.monitoringModeSampling;
-                            break;
-                        case CHANGE_OF_STATE:
-                            monitoringMode = MonitoringMode.monitoringModeReporting;
-                            break;
-                        case EVENT:
-                            monitoringMode = MonitoringMode.monitoringModeReporting;
-                            break;
-                        default:
-                            monitoringMode = MonitoringMode.monitoringModeReporting;
-                    }
-
-                    long clientHandle = clientHandles.getAndIncrement();
-
-                    MonitoringParameters parameters = new MonitoringParameters(
-                        clientHandle,
-                        (double) cycleTime,     // sampling interval
-                        NULL_EXTENSION_OBJECT,       // filter, null means use default
-                        1L,   // queue size
-                        true        // discard oldest
-                    );
-
-                    MonitoredItemCreateRequest request = new MonitoredItemCreateRequest(
-                        readValueId, monitoringMode, parameters);
-
-                    requestList.add(request);
-
-                } catch (InterruptedException e) {
-                    Thread.currentThread().interrupt();
-                    LOGGER.warn("Unable to subscribe Elements because of: {}", e.getMessage());
-                } catch (ExecutionException e) {
-                    LOGGER.warn("Unable to subscribe Elements because of: {}", e.getMessage());
-                } catch (TimeoutException e) {
-                    LOGGER.warn("Unable to subscribe Elements because of: {}", e.getMessage());
+                if (!(fieldDefaultPlcSubscription.getPlcField() instanceof OpcuaField)) {
+                    values.put(fieldName, new ResponseItem<>(PlcResponseCode.INVALID_ADDRESS, null));
+                } else {
+                    values.put(fieldName, new ResponseItem<>(PlcResponseCode.OK, subscriptions.get(subscriptionId)));
                 }
+
+                NodeId idNode = generateNodeId((OpcuaField) fieldDefaultPlcSubscription.getPlcField());
+
+                ReadValueId readValueId = new ReadValueId(
+                    idNode,
+                    0xD,
+                    NULL_STRING,
+                    new QualifiedName(0, NULL_STRING));
+
+                MonitoringMode monitoringMode;
+                switch (fieldDefaultPlcSubscription.getPlcSubscriptionType()) {
+                    case CYCLIC:
+                        monitoringMode = MonitoringMode.monitoringModeSampling;
+                        break;
+                    case CHANGE_OF_STATE:
+                        monitoringMode = MonitoringMode.monitoringModeReporting;
+                        break;
+                    case EVENT:
+                        monitoringMode = MonitoringMode.monitoringModeReporting;
+                        break;
+                    default:
+                        monitoringMode = MonitoringMode.monitoringModeReporting;
+                }
+
+                long clientHandle = clientHandles.getAndIncrement();
+
+                MonitoringParameters parameters = new MonitoringParameters(
+                    clientHandle,
+                    (double) cycleTime,     // sampling interval
+                    NULL_EXTENSION_OBJECT,       // filter, null means use default
+                    1L,   // queue size
+                    true        // discard oldest
+                );
+
+                MonitoredItemCreateRequest request = new MonitoredItemCreateRequest(
+                    readValueId, monitoringMode, parameters);
+
+                requestList.add(request);
             }
 
             CreateMonitoredItemsResponse monitoredItemsResponse = null;
@@ -1702,7 +1694,7 @@ public class OpcuaProtocolLogic extends Plc4xProtocolBase<OpcuaAPU> implements H
                     transaction.endRequest();
                 }));
         } catch (ParseException e) {
-            LOGGER.info("Unable to serialize subscription request");
+            LOGGER.error("Unable to serialize subscription request");
         }
         return future;
     }
@@ -1719,9 +1711,6 @@ public class OpcuaProtocolLogic extends Plc4xProtocolBase<OpcuaAPU> implements H
             NULL_STRING,
             REQUEST_TIMEOUT_LONG,
             NULL_EXTENSION_OBJECT);
-
-        System.out.println(requestList.size());
-        System.out.println(requestList);
 
         CreateMonitoredItemsRequest createMonitoredItemsRequest = new CreateMonitoredItemsRequest(
             requestHeader,
@@ -1777,7 +1766,7 @@ public class OpcuaProtocolLogic extends Plc4xProtocolBase<OpcuaAPU> implements H
                     transaction.endRequest();
                 }));
         } catch (ParseException e) {
-            LOGGER.info("Unable to serialize subscription request");
+            LOGGER.error("Unable to serialize subscription request");
         }
         return future;
     }
@@ -1805,6 +1794,7 @@ public class OpcuaProtocolLogic extends Plc4xProtocolBase<OpcuaAPU> implements H
         List<PlcConsumerRegistration> registrations = new LinkedList<>();
         // Register the current consumer for each of the given subscription handles
         for (PlcSubscriptionHandle subscriptionHandle : handles) {
+            LOGGER.info("Registering Consumer");
             final PlcConsumerRegistration consumerRegistration = subscriptionHandle.register(consumer);
             registrations.add(consumerRegistration);
         }

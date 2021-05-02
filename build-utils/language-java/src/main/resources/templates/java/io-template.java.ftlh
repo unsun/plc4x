@@ -198,7 +198,7 @@ public class ${type.name}IO implements <#if outputFlavor != "passive">MessageIO<
 
             }
         }
-            LOGGER.info("${arrayField.name} - {}", ${arrayField.name});
+            LOGGER.trace("${arrayField.name} - {}", ${arrayField.name});
 
         <#-- In all other cases do we have to work with a list, that is later converted to an array -->
         <#else>
@@ -257,7 +257,7 @@ public class ${type.name}IO implements <#if outputFlavor != "passive">MessageIO<
             if(checksum != checksumRef) {
                 throw new ParseException(String.format("Checksum verification failed. Expected %04X but got %04X", checksumRef & 0xFFFF, checksum & 0xFFFF));
             }
-            LOGGER.info("CheckSum - {}", checksum);
+            LOGGER.trace("CheckSum - {}", checksum);
         }
         <#break>
     <#case "const">
@@ -269,7 +269,7 @@ public class ${type.name}IO implements <#if outputFlavor != "passive">MessageIO<
         if(${constField.name} != ${type.name}.${constField.name?upper_case}) {
             throw new ParseException("Expected constant value " + ${type.name}.${constField.name?upper_case} + " but got " + ${constField.name});
         }
-    LOGGER.info("${constField.name} - {}", ${constField.name});
+    LOGGER.trace("${constField.name} - {}", ${constField.name});
 
         <#break>
     <#case "discriminator">
@@ -364,7 +364,7 @@ public class ${type.name}IO implements <#if outputFlavor != "passive">MessageIO<
 
         // Manual Field (${manualField.name})
         ${helper.getLanguageTypeNameForField(field)} ${manualField.name} = (${helper.getLanguageTypeNameForField(field)}) (${helper.toParseExpression(manualField, manualField.parseExpression, type.parserArguments)});
-    LOGGER.info("${manualField.name} - {}", ${manualField.name});
+    LOGGER.trace("${manualField.name} - {}", ${manualField.name});
         <#break>
     <#case "optional">
         <#assign optionalField = field>
@@ -381,7 +381,7 @@ public class ${type.name}IO implements <#if outputFlavor != "passive">MessageIO<
             ${optionalField.name} = <#if helper.isSimpleTypeReference(optionalField.type)>${helper.getReadBufferReadMethodCall(optionalField.type, "", optionalField)}<#else>${optionalField.type.name}IO.staticParse(io<#if field.params?has_content>, <#list field.params as parserArgument>(${helper.getLanguageTypeNameForTypeReference(helper.getArgumentType(optionalField.type, parserArgument?index), true)}) (${helper.toParseExpression(optionalField, parserArgument, type.parserArguments)})<#sep>, </#sep></#list></#if>)</#if>;
             </#if>
         }
-    LOGGER.info("${optionalField.name} - {}", ${optionalField.name});
+    LOGGER.trace("${optionalField.name} - {}", ${optionalField.name});
         <#break>
     <#case "padding">
         <#assign paddingField = field>
@@ -404,7 +404,7 @@ public class ${type.name}IO implements <#if outputFlavor != "passive">MessageIO<
         {
             ${helper.getLanguageTypeNameForField(field)} reserved = ${helper.getReadBufferReadMethodCall(simpleTypeReference, "", reservedField)};
             if(reserved != ${helper.getReservedValue(reservedField)}) {
-                LOGGER.info("Expected constant value " + ${reservedField.referenceValue} + " but got " + reserved + " for reserved field.");
+                LOGGER.trace("Expected constant value " + ${reservedField.referenceValue} + " but got " + reserved + " for reserved field.");
             }
         }
         <#break>
@@ -437,7 +437,7 @@ public class ${type.name}IO implements <#if outputFlavor != "passive">MessageIO<
         </@compress>
         </#if>
 
-    LOGGER.info("${simpleField.name} - {}", ${simpleField.name});
+    LOGGER.trace("${simpleField.name} - {}", ${simpleField.name});
         <#break>
     <#case "switch">
         <#assign switchField = field>
@@ -634,7 +634,7 @@ public class ${type.name}IO implements <#if outputFlavor != "passive">MessageIO<
         ${complexTypeReference.name}IO.staticSerialize(io, ${simpleField.name});
             </#if>
         </#if>
-    LOGGER.info("${simpleField.name} - {} - Position {}", ${simpleField.name}, io.getPos());
+    LOGGER.trace("${simpleField.name} - {} - Position {}", ${simpleField.name}, io.getPos());
         <#break>
     <#case "switch">
         <#assign switchField = field>

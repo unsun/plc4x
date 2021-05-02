@@ -28,6 +28,7 @@ import org.apache.plc4x.java.opcua.field.OpcuaField;
 import org.apache.plc4x.java.opcua.readwrite.*;
 import org.apache.plc4x.java.opcua.readwrite.io.ExtensionObjectIO;
 import org.apache.plc4x.java.opcua.readwrite.types.OpcuaNodeIdServices;
+import org.apache.plc4x.java.opcua.readwrite.types.OpcuaStatusCodes;
 import org.apache.plc4x.java.spi.generation.ParseException;
 import org.apache.plc4x.java.spi.generation.ReadBuffer;
 import org.apache.plc4x.java.spi.generation.WriteBuffer;
@@ -36,6 +37,7 @@ import org.apache.plc4x.java.spi.messages.utils.ResponseItem;
 import org.apache.plc4x.java.spi.model.DefaultPlcConsumerRegistration;
 import org.apache.plc4x.java.spi.model.DefaultPlcSubscriptionHandle;
 import org.apache.plc4x.java.spi.transaction.RequestTransactionManager;
+import org.apache.plc4x.protocol.opcua.OpcuaProtocol;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -53,8 +55,8 @@ public class OpcuaSubscriptionHandle extends DefaultPlcSubscriptionHandle {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(OpcuaSubscriptionHandle.class);
 
-    private Set<Consumer<PlcSubscriptionEvent>> consumers = new HashSet<>();
-    private OpcuaField field;
+    private Set<Consumer<PlcSubscriptionEvent>> consumers;
+    private List<String> fieldNames;
     private long clientHandle;
 
     private AtomicBoolean destroy = new AtomicBoolean(false);
@@ -63,15 +65,18 @@ public class OpcuaSubscriptionHandle extends DefaultPlcSubscriptionHandle {
     private long cycleTime;
 
     /**
-     * @param field    corresponding map key in the PLC4X request/reply map
+     * @param fieldNames    corresponding map key in the PLC4X request/reply map
      *
      */
-    public OpcuaSubscriptionHandle(OpcuaProtocolLogic plcSubscriber, Long subscriptionId, OpcuaField field, long cycleTime) {
+    public OpcuaSubscriptionHandle(OpcuaProtocolLogic plcSubscriber, Long subscriptionId, LinkedHashSet<String> fieldNames, long cycleTime) {
         super(plcSubscriber);
-        this.field = field;
+        this.consumers = new HashSet<>();
+        this.fieldNames = new ArrayList<>( fieldNames );
         this.subscriptionId = subscriptionId;
         this.plcSubscriber = plcSubscriber;
         this.cycleTime = cycleTime;
+        LOGGER.info("Creating Subscription handle");
+        startSubscriber();
     }
 
     /**
@@ -86,11 +91,11 @@ public class OpcuaSubscriptionHandle extends DefaultPlcSubscriptionHandle {
                 LinkedList<Long> outstandingRequests = new LinkedList<>();
                 AtomicInteger sequenceNumber = new AtomicInteger(1);
                 while (!this.destroy.get()) {
-                    LOGGER.info("SubscriberLoop");
+                    LOGGER.trace("SubscriberLoop");
                     try {
                         Thread.sleep(this.cycleTime);
                     } catch (InterruptedException e) {
-                        LOGGER.info("Interrupted Exception");
+                        LOGGER.trace("Interrupted Exception");
                     }
 
                     int requestHandle = sequenceNumber.getAndIncrement();
@@ -105,9 +110,7 @@ public class OpcuaSubscriptionHandle extends DefaultPlcSubscriptionHandle {
 
                     SubscriptionAcknowledgement[] acks = null;
                     int ackLength = -1;
-                    LOGGER.info("-------------Oustanding Size1: - {}", outstandingAcknowledgements.size());
                     if (outstandingAcknowledgements.size() > 0) {
-                        LOGGER.info("-------------Oustanding Size: - {}", outstandingAcknowledgements.size());
                         acks = new SubscriptionAcknowledgement[outstandingAcknowledgements.size()];
                         ackLength = outstandingAcknowledgements.size();
                         for (int i = 0; i < outstandingAcknowledgements.size(); i++) {
@@ -165,11 +168,17 @@ public class OpcuaSubscriptionHandle extends DefaultPlcSubscriptionHandle {
                                 if (((NotificationMessage) responseMessage.getNotificationMessage()).getNoOfNotificationData() > 0) {
 
                                 }
-                                for (ExtensionObject notifications : ((NotificationMessage) responseMessage.getNotificationMessage()).getNotificationData()) {
-
+                                for (ExtensionObject notificationMessage : ((NotificationMessage) responseMessage.getNotificationMessage()).getNotificationData()) {
+                                    ExtensionObjectDefinition notification = notificationMessage.getBody();
+                                    if (notification instanceof DataChangeNotification) {
+                                        LOGGER.info("Found a Data Change notification");
+                                        ExtensionObjectDefinition[] items = ((DataChangeNotification) notification).getMonitoredItems();
+                                        MonitoredItemNotification[] monitoredItems = Arrays.copyOf(items, items.length, MonitoredItemNotification[].class);
+                                        onSubscriptionValue(monitoredItems);
+                                    } else {
+                                        LOGGER.warn("Unsupported Notification type");
+                                    }
                                 }
-
-
 
                                 // Pass the response back to the application.
 
@@ -177,7 +186,7 @@ public class OpcuaSubscriptionHandle extends DefaultPlcSubscriptionHandle {
                                 transaction.endRequest();
                             }));
                     } catch (ParseException e) {
-                        LOGGER.info("Unable to serialize subscription request");
+                        LOGGER.warn("Unable to serialize subscription request");
                     }
                 }
 
@@ -206,32 +215,38 @@ public class OpcuaSubscriptionHandle extends DefaultPlcSubscriptionHandle {
     }
 
     /**
-     * @param item
-     * @param value
+     * @param values
      */
-    public void onSubscriptionValue(Object item, Object value) {
+    public void onSubscriptionValue(MonitoredItemNotification[] values) {
+        LOGGER.info("Consumer Length {}", consumers.size());
         consumers.forEach(plcSubscriptionEventConsumer -> {
             PlcResponseCode resultCode = PlcResponseCode.OK;
             PlcValue stringItem = null;
-            /*if (value.getStatusCode() != StatusCode.GOOD) {
-                resultCode = PlcResponseCode.NOT_FOUND;
-            } else {
-                stringItem = OpcuaTcpPlcConnection.encodePlcValue(value);
+            try {
+                LinkedHashSet<String> fieldList = new LinkedHashSet<>();
+                DataValue[] dataValues = new DataValue[values.length];
+                int i = 0;
+                for (MonitoredItemNotification value : values) {
 
-            }*/
-            Map<String, ResponseItem<PlcValue>> fields = new HashMap<>();
-            ResponseItem<PlcValue> newPair = new ResponseItem<>(resultCode, stringItem);
-            fields.put(field.getIdentifier(), newPair);
-            PlcSubscriptionEvent event = new DefaultPlcSubscriptionEvent(Instant.now(), fields);
-            plcSubscriptionEventConsumer.accept(event);
+                    fieldList.add(fieldNames.get((int) value.getClientHandle() - 1));
+                    dataValues[i] = value.getValue();
+                    i++;
+                }
+                LOGGER.info("Variant Type - {} ", dataValues[0].getValue().getVariantType());
+                Map<String, ResponseItem<PlcValue>> fields = plcSubscriber.readResponse(fieldList, dataValues);
+                PlcSubscriptionEvent event = new DefaultPlcSubscriptionEvent(Instant.now(), fields);
+                plcSubscriptionEventConsumer.accept(event);
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
         });
     }
 
     @Override
     public PlcConsumerRegistration register(Consumer<PlcSubscriptionEvent> consumer) {
+        LOGGER.info("Registering within Handle class");
         consumers.add(consumer);
-        return null;
-//        return () -> consumers.remove(consumer);
+        return new DefaultPlcConsumerRegistration(plcSubscriber, consumer, this);
     }
 
 
