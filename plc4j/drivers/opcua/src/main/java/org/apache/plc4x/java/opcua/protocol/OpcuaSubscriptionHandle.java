@@ -187,6 +187,7 @@ public class OpcuaSubscriptionHandle extends DefaultPlcSubscriptionHandle {
                             }));
                     } catch (ParseException e) {
                         LOGGER.warn("Unable to serialize subscription request");
+                        e.printStackTrace();
                     }
                 }
 
