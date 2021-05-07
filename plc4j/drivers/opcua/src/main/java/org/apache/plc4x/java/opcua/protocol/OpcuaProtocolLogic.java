@@ -70,6 +70,7 @@ import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 
 public class OpcuaProtocolLogic extends Plc4xProtocolBase<OpcuaAPU> implements HasConfiguration<OpcuaConfiguration>, PlcSubscriber {
@@ -146,6 +147,10 @@ public class OpcuaProtocolLogic extends Plc4xProtocolBase<OpcuaAPU> implements H
         // Only the TCP transport supports login.
         LOGGER.info("Opcua Driver running in ACTIVE mode.");
 
+        if (this.channel == null) {
+            this.channel = new SecureChannel(driverContext, this.configuration);
+        }
+
         this.channel.onConnect(context);
     }
 
@@ -161,18 +166,16 @@ public class OpcuaProtocolLogic extends Plc4xProtocolBase<OpcuaAPU> implements H
     @Override
     public CompletableFuture<PlcReadResponse> read(PlcReadRequest readRequest) {
         LOGGER.trace("Reading Value");
+
         CompletableFuture<PlcReadResponse> future = new CompletableFuture<>();
         DefaultPlcReadRequest request = (DefaultPlcReadRequest) readRequest;
 
-
-        int requestHandle = getRequestHandle();
-
-        RequestHeader requestHeader = new RequestHeader(new NodeId(authenticationToken),
-            getCurrentDateTime(),
-            requestHandle,
+        RequestHeader requestHeader = new RequestHeader(channel.getAuthenticationToken(),
+            SecureChannel.getCurrentDateTime(),
+            channel.getRequestHandle(),
             0L,
             NULL_STRING,
-            REQUEST_TIMEOUT_LONG,
+            SecureChannel.REQUEST_TIMEOUT_LONG,
             NULL_EXTENSION_OBJECT);
 
         ReadValueId[] readValueArray = new ReadValueId[request.getFieldNames().size()];
@@ -207,41 +210,39 @@ public class OpcuaProtocolLogic extends Plc4xProtocolBase<OpcuaAPU> implements H
             null,
             opcuaReadRequest);
 
-        int transactionId = getTransactionIdentifier();
-
         try {
             WriteBuffer buffer = new WriteBuffer(extObject.getLengthInBytes(), true);
             ExtensionObjectIO.staticSerialize(buffer, extObject);
 
-            OpcuaMessageRequest readMessageRequest = new OpcuaMessageRequest(FINAL_CHUNK,
-                channelId.get(),
-                tokenId.get(),
-                transactionId,
-                transactionId,
-                buffer.getData());
+            /* Functional Consumer example using inner class */
+            Consumer<OpcuaMessageResponse> consumer = opcuaResponse -> {
+                PlcReadResponse response = null;
+                try {
+                    response = new DefaultPlcReadResponse(request, readResponse(request.getFieldNames(), ((ReadResponse) ExtensionObjectIO.staticParse(new ReadBuffer(opcuaResponse.getMessage(), true), false).getBody()).getResults()));
+                } catch (ParseException e) {
+                    e.printStackTrace();
+                };
 
-            RequestTransactionManager.RequestTransaction transaction = tm.startRequest();
-            transaction.submit(() -> context.sendRequest(new OpcuaAPU(readMessageRequest))
-                .expectResponse(OpcuaAPU.class, REQUEST_TIMEOUT)
-                .onTimeout(future::completeExceptionally)
-                .onError((p, e) -> future.completeExceptionally(e))
-                .check(p -> p.getMessage() instanceof OpcuaMessageResponse)
-                .unwrap(p -> (OpcuaMessageResponse) p.getMessage())
-                .handle(opcuaResponse -> {
-                    // Prepare the response.
-                    PlcReadResponse response = null;
-                    try {
-                        response = new DefaultPlcReadResponse(request, readResponse(request.getFieldNames(), ((ReadResponse) ExtensionObjectIO.staticParse(new ReadBuffer(opcuaResponse.getMessage(), true), false).getBody()).getResults()));
-                    } catch (ParseException e) {
-                        e.printStackTrace();
-                    };
+                // Pass the response back to the application.
+                future.complete(response);
+            };
 
-                    // Pass the response back to the application.
-                    future.complete(response);
+            /* Functional Consumer example using inner class */
+            Consumer<TimeoutException> timeout = t -> {
 
-                    // Finish the request-transaction.
-                    transaction.endRequest();
-                }));
+                // Pass the response back to the application.
+                future.completeExceptionally(t);
+            };
+
+            /* Functional Consumer example using inner class */
+            BiConsumer<OpcuaAPU, Throwable> error = (message, t) -> {
+
+                // Pass the response back to the application.
+                future.completeExceptionally(t);
+            };
+
+            channel.submit(timeout, error, consumer, buffer);
+
         } catch (ParseException e) {
             LOGGER.error("Unable to serialise the ReadRequest");
         }
@@ -687,17 +688,13 @@ public class OpcuaProtocolLogic extends Plc4xProtocolBase<OpcuaAPU> implements H
         CompletableFuture<PlcWriteResponse> future = new CompletableFuture<>();
         DefaultPlcWriteRequest request = (DefaultPlcWriteRequest) writeRequest;
 
-        int requestHandle = getRequestHandle();
-
-        RequestHeader requestHeader = new RequestHeader(new NodeId(authenticationToken),
-            getCurrentDateTime(),
-            requestHandle,
+        RequestHeader requestHeader = new RequestHeader(channel.getAuthenticationToken(),
+            SecureChannel.getCurrentDateTime(),
+            channel.getRequestHandle(),
             0L,
             NULL_STRING,
-            REQUEST_TIMEOUT_LONG,
+            SecureChannel.REQUEST_TIMEOUT_LONG,
             NULL_EXTENSION_OBJECT);
-
-
 
         WriteValue[] writeValueArray = new WriteValue[request.getFieldNames().size()];
         Iterator<String> iterator = request.getFieldNames().iterator();
@@ -736,8 +733,6 @@ public class OpcuaProtocolLogic extends Plc4xProtocolBase<OpcuaAPU> implements H
             null,
             null);
 
-        int transactionId = getTransactionIdentifier();
-
         ExtensionObject extObject = new ExtensionObject(
             expandedNodeId,
             null,
@@ -747,37 +742,38 @@ public class OpcuaProtocolLogic extends Plc4xProtocolBase<OpcuaAPU> implements H
             WriteBuffer buffer = new WriteBuffer(extObject.getLengthInBytes(), true);
             ExtensionObjectIO.staticSerialize(buffer, extObject);
 
-            OpcuaMessageRequest writeMessageRequest = new OpcuaMessageRequest(FINAL_CHUNK,
-                channelId.get(),
-                tokenId.get(),
-                transactionId,
-                transactionId,
-                buffer.getData());
+            /* Functional Consumer example using inner class */
+            Consumer<OpcuaMessageResponse> consumer = opcuaResponse -> {
+                WriteResponse responseMessage = null;
+                try {
+                    responseMessage = (WriteResponse) ExtensionObjectIO.staticParse(new ReadBuffer(opcuaResponse.getMessage(), true), false).getBody();
+                } catch (ParseException e) {
+                    e.printStackTrace();
+                }
+                PlcWriteResponse response = writeResponse(request, responseMessage);
 
-            RequestTransactionManager.RequestTransaction transaction = tm.startRequest();
-            transaction.submit(() -> context.sendRequest(new OpcuaAPU(writeMessageRequest))
-                .expectResponse(OpcuaAPU.class, REQUEST_TIMEOUT)
-                .onTimeout(future::completeExceptionally)
-                .onError((p, e) -> future.completeExceptionally(e))
-                .check(p -> p.getMessage() instanceof OpcuaMessageResponse)
-                .unwrap(p -> (OpcuaMessageResponse) p.getMessage())
-                .handle(opcuaResponse -> {
-                    WriteResponse responseMessage = null;
-                    try {
-                        responseMessage = (WriteResponse) ExtensionObjectIO.staticParse(new ReadBuffer(opcuaResponse.getMessage(), true), false).getBody();
-                    } catch (ParseException e) {
-                        e.printStackTrace();
-                    }
-                    PlcWriteResponse response = writeResponse(request, responseMessage);
+                // Pass the response back to the application.
+                future.complete(response);
+            };
 
-                    // Pass the response back to the application.
-                    future.complete(response);
+            /* Functional Consumer example using inner class */
+            Consumer<TimeoutException> timeout = t -> {
 
-                    // Finish the request-transaction.
-                    transaction.endRequest();
-                }));
+                // Pass the response back to the application.
+                future.completeExceptionally(t);
+            };
+
+            /* Functional Consumer example using inner class */
+            BiConsumer<OpcuaAPU, Throwable> error = (message, t) -> {
+
+                // Pass the response back to the application.
+                future.completeExceptionally(t);
+            };
+
+            channel.submit(timeout, error, consumer, buffer);
+
         } catch (ParseException e) {
-            LOGGER.error("Unable to serialize write request");
+            LOGGER.error("Unable to serialise the ReadRequest");
         }
 
         return future;
@@ -822,11 +818,11 @@ public class OpcuaProtocolLogic extends Plc4xProtocolBase<OpcuaAPU> implements H
 
             try {
                 CompletableFuture<CreateSubscriptionResponse> subscription = onSubscribeCreateSubscription(cycleTime);
-                CreateSubscriptionResponse response = subscription.get(REQUEST_TIMEOUT_LONG, TimeUnit.MILLISECONDS);
+                CreateSubscriptionResponse response = subscription.get(SecureChannel.REQUEST_TIMEOUT_LONG, TimeUnit.MILLISECONDS);
                 //Store this somewhere safe
                 subscriptionId = response.getSubscriptionId();
 
-                subscriptions.put(subscriptionId, new OpcuaSubscriptionHandle(this, subscriptionId, subscriptionRequest.getFieldNames(), cycleTime));
+                subscriptions.put(subscriptionId, new OpcuaSubscriptionHandle(this, channel, subscriptionId, subscriptionRequest.getFieldNames(), cycleTime));
 
             } catch (InterruptedException e) {
                 Thread.currentThread().interrupt();
@@ -920,14 +916,12 @@ public class OpcuaProtocolLogic extends Plc4xProtocolBase<OpcuaAPU> implements H
     private CompletableFuture<CreateSubscriptionResponse> onSubscribeCreateSubscription(long cycleTime) {
         CompletableFuture<CreateSubscriptionResponse> future = new CompletableFuture<>();
 
-        int requestHandle = getRequestHandle();
-
-        RequestHeader requestHeader = new RequestHeader(new NodeId(authenticationToken),
-            getCurrentDateTime(),
-            requestHandle,
+        RequestHeader requestHeader = new RequestHeader(channel.getAuthenticationToken(),
+            SecureChannel.getCurrentDateTime(),
+            channel.getRequestHandle(),
             0L,
             NULL_STRING,
-            REQUEST_TIMEOUT_LONG,
+            SecureChannel.REQUEST_TIMEOUT_LONG,
             NULL_EXTENSION_OBJECT);
 
         CreateSubscriptionRequest createSubscriptionRequest = new CreateSubscriptionRequest(
@@ -955,53 +949,52 @@ public class OpcuaProtocolLogic extends Plc4xProtocolBase<OpcuaAPU> implements H
             WriteBuffer buffer = new WriteBuffer(extObject.getLengthInBytes(), true);
             ExtensionObjectIO.staticSerialize(buffer, extObject);
 
-            int transactionId = getTransactionIdentifier();
+            /* Functional Consumer example using inner class */
+            Consumer<OpcuaMessageResponse> consumer = opcuaResponse -> {
+                CreateSubscriptionResponse responseMessage = null;
+                try {
+                    responseMessage = (CreateSubscriptionResponse) ExtensionObjectIO.staticParse(new ReadBuffer(opcuaResponse.getMessage(), true), false).getBody();
+                } catch (ParseException e) {
+                    e.printStackTrace();
+                }
 
-            OpcuaMessageRequest createMessageRequest = new OpcuaMessageRequest(FINAL_CHUNK,
-                channelId.get(),
-                tokenId.get(),
-                transactionId,
-                transactionId,
-                buffer.getData());
+                // Pass the response back to the application.
+                future.complete(responseMessage);
 
-            RequestTransactionManager.RequestTransaction transaction = tm.startRequest();
-            transaction.submit(() -> context.sendRequest(new OpcuaAPU(createMessageRequest))
-                .expectResponse(OpcuaAPU.class, REQUEST_TIMEOUT)
-                .onTimeout(future::completeExceptionally)
-                .onError((p, e) -> future.completeExceptionally(e))
-                .check(p -> p.getMessage() instanceof OpcuaMessageResponse)
-                .unwrap(p -> (OpcuaMessageResponse) p.getMessage())
-                .handle(opcuaResponse -> {
-                    CreateSubscriptionResponse responseMessage = null;
-                    try {
-                        responseMessage = (CreateSubscriptionResponse) ExtensionObjectIO.staticParse(new ReadBuffer(opcuaResponse.getMessage(), true), false).getBody();
-                    } catch (ParseException e) {
-                        e.printStackTrace();
-                    }
+            };
 
-                    // Pass the response back to the application.
-                    future.complete(responseMessage);
+            /* Functional Consumer example using inner class */
+            Consumer<TimeoutException> timeout = t -> {
 
-                    // Finish the request-transaction.
-                    transaction.endRequest();
-                }));
+                // Pass the response back to the application.
+                future.completeExceptionally(t);
+            };
+
+            /* Functional Consumer example using inner class */
+            BiConsumer<OpcuaAPU, Throwable> error = (message, t) -> {
+
+                // Pass the response back to the application.
+                future.completeExceptionally(t);
+            };
+
+            channel.submit(timeout, error, consumer, buffer);
+
         } catch (ParseException e) {
-            LOGGER.error("Unable to serialize subscription request");
+            LOGGER.error("Unable to serialise the ReadRequest");
         }
+
         return future;
     }
 
     private CompletableFuture<CreateMonitoredItemsResponse> onSubscribeCreateMonitoredItemsRequest(List<MonitoredItemCreateRequest> requestList, long subscriptionId)  {
         CompletableFuture<CreateMonitoredItemsResponse> future = new CompletableFuture<>();
 
-        int requestHandle = getRequestHandle();
-
-        RequestHeader requestHeader = new RequestHeader(new NodeId(authenticationToken),
-            getCurrentDateTime(),
-            requestHandle,
+        RequestHeader requestHeader = new RequestHeader(channel.getAuthenticationToken(),
+            SecureChannel.getCurrentDateTime(),
+            channel.getRequestHandle(),
             0L,
             NULL_STRING,
-            REQUEST_TIMEOUT_LONG,
+            SecureChannel.REQUEST_TIMEOUT_LONG,
             NULL_EXTENSION_OBJECT);
 
         CreateMonitoredItemsRequest createMonitoredItemsRequest = new CreateMonitoredItemsRequest(
@@ -1027,39 +1020,40 @@ public class OpcuaProtocolLogic extends Plc4xProtocolBase<OpcuaAPU> implements H
             WriteBuffer buffer = new WriteBuffer(extObject.getLengthInBytes(), true);
             ExtensionObjectIO.staticSerialize(buffer, extObject);
 
-            int transactionId = getTransactionIdentifier();
+            /* Functional Consumer example using inner class */
+            Consumer<OpcuaMessageResponse> consumer = opcuaResponse -> {
+                CreateMonitoredItemsResponse responseMessage = null;
+                try {
+                    responseMessage = (CreateMonitoredItemsResponse) ExtensionObjectIO.staticParse(new ReadBuffer(opcuaResponse.getMessage(), true), false).getBody();
+                } catch (ParseException e) {
+                    e.printStackTrace();
+                }
 
-            OpcuaMessageRequest createMessageRequest = new OpcuaMessageRequest(FINAL_CHUNK,
-                channelId.get(),
-                tokenId.get(),
-                transactionId,
-                transactionId,
-                buffer.getData());
+                // Pass the response back to the application.
+                future.complete(responseMessage);
 
-            RequestTransactionManager.RequestTransaction transaction = tm.startRequest();
-            transaction.submit(() -> context.sendRequest(new OpcuaAPU(createMessageRequest))
-                .expectResponse(OpcuaAPU.class, REQUEST_TIMEOUT)
-                .onTimeout(future::completeExceptionally)
-                .onError((p, e) -> future.completeExceptionally(e))
-                .check(p -> p.getMessage() instanceof OpcuaMessageResponse)
-                .unwrap(p -> (OpcuaMessageResponse) p.getMessage())
-                .handle(opcuaResponse -> {
-                    CreateMonitoredItemsResponse responseMessage = null;
-                    try {
-                        responseMessage = (CreateMonitoredItemsResponse) ExtensionObjectIO.staticParse(new ReadBuffer(opcuaResponse.getMessage(), true), false).getBody();
-                    } catch (ParseException e) {
-                        e.printStackTrace();
-                    }
+            };
 
-                    // Pass the response back to the application.
-                    future.complete(responseMessage);
+            /* Functional Consumer example using inner class */
+            Consumer<TimeoutException> timeout = t -> {
 
-                    // Finish the request-transaction.
-                    transaction.endRequest();
-                }));
+                // Pass the response back to the application.
+                future.completeExceptionally(t);
+            };
+
+            /* Functional Consumer example using inner class */
+            BiConsumer<OpcuaAPU, Throwable> error = (message, t) -> {
+
+                // Pass the response back to the application.
+                future.completeExceptionally(t);
+            };
+
+            channel.submit(timeout, error, consumer, buffer);
+
         } catch (ParseException e) {
-            LOGGER.error("Unable to serialize subscription request");
+            LOGGER.error("Unable to serialise the ReadRequest");
         }
+
         return future;
     }
 

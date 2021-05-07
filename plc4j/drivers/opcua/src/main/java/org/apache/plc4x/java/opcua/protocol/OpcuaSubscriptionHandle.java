@@ -24,6 +24,7 @@ import org.apache.plc4x.java.api.model.PlcConsumerRegistration;
 import org.apache.plc4x.java.api.model.PlcSubscriptionHandle;
 import org.apache.plc4x.java.api.types.PlcResponseCode;
 import org.apache.plc4x.java.api.value.PlcValue;
+import org.apache.plc4x.java.opcua.context.SecureChannel;
 import org.apache.plc4x.java.opcua.field.OpcuaField;
 import org.apache.plc4x.java.opcua.readwrite.*;
 import org.apache.plc4x.java.opcua.readwrite.io.ExtensionObjectIO;
@@ -44,9 +45,11 @@ import org.slf4j.LoggerFactory;
 import java.time.Instant;
 import java.util.*;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 
 /**
@@ -58,6 +61,7 @@ public class OpcuaSubscriptionHandle extends DefaultPlcSubscriptionHandle {
     private Set<Consumer<PlcSubscriptionEvent>> consumers;
     private List<String> fieldNames;
     private long clientHandle;
+    private SecureChannel channel;
 
     private AtomicBoolean destroy = new AtomicBoolean(false);
     private OpcuaProtocolLogic plcSubscriber;
@@ -68,10 +72,11 @@ public class OpcuaSubscriptionHandle extends DefaultPlcSubscriptionHandle {
      * @param fieldNames    corresponding map key in the PLC4X request/reply map
      *
      */
-    public OpcuaSubscriptionHandle(OpcuaProtocolLogic plcSubscriber, Long subscriptionId, LinkedHashSet<String> fieldNames, long cycleTime) {
+    public OpcuaSubscriptionHandle(OpcuaProtocolLogic plcSubscriber, SecureChannel channel, Long subscriptionId, LinkedHashSet<String> fieldNames, long cycleTime) {
         super(plcSubscriber);
         this.consumers = new HashSet<>();
         this.fieldNames = new ArrayList<>( fieldNames );
+        this.channel = channel;
         this.subscriptionId = subscriptionId;
         this.plcSubscriber = plcSubscriber;
         this.cycleTime = cycleTime;
@@ -98,14 +103,14 @@ public class OpcuaSubscriptionHandle extends DefaultPlcSubscriptionHandle {
                         LOGGER.trace("Interrupted Exception");
                     }
 
-                    int requestHandle = sequenceNumber.getAndIncrement();
+                    long requestHandle = channel.getRequestHandle();
 
-                    RequestHeader requestHeader = new RequestHeader(this.plcSubscriber.getAuthenticationToken(),
-                        OpcuaProtocolLogic.getCurrentDateTime(),
-                        requestHandle,
+                    RequestHeader requestHeader = new RequestHeader(channel.getAuthenticationToken(),
+                        SecureChannel.getCurrentDateTime(),
+                        channel.getRequestHandle(),
                         0L,
                         OpcuaProtocolLogic.NULL_STRING,
-                        OpcuaProtocolLogic.REQUEST_TIMEOUT_LONG,
+                        SecureChannel.REQUEST_TIMEOUT_LONG,
                         OpcuaProtocolLogic.NULL_EXTENSION_OBJECT);
 
                     SubscriptionAcknowledgement[] acks = null;
@@ -139,52 +144,49 @@ public class OpcuaSubscriptionHandle extends DefaultPlcSubscriptionHandle {
                         WriteBuffer buffer = new WriteBuffer(extObject.getLengthInBytes(), true);
                         ExtensionObjectIO.staticSerialize(buffer, extObject);
 
-                        int transactionId = this.plcSubscriber.getTransactionIdentifier();
+                        /* Functional Consumer example using inner class */
+                        Consumer<OpcuaMessageResponse> consumer = opcuaResponse -> {
+                            PublishResponse responseMessage = null;
+                            try {
+                                responseMessage = (PublishResponse) ExtensionObjectIO.staticParse(new ReadBuffer(opcuaResponse.getMessage(), true), false).getBody();
+                            } catch (ParseException e) {
+                                e.printStackTrace();
+                            }
+                            outstandingRequests.remove(((ResponseHeader) responseMessage.getResponseHeader()).getRequestHandle());
+                            outstandingAcknowledgements.add(((ResponseHeader) responseMessage.getResponseHeader()).getRequestHandle());
 
-                        OpcuaMessageRequest createMessageRequest = new OpcuaMessageRequest(OpcuaProtocolLogic.FINAL_CHUNK,
-                            this.plcSubscriber.getChannelId(),
-                            this.plcSubscriber.getTokenId(),
-                            transactionId,
-                            transactionId,
-                            buffer.getData());
+                            if (((NotificationMessage) responseMessage.getNotificationMessage()).getNoOfNotificationData() > 0) {
 
-                        RequestTransactionManager.RequestTransaction transaction = tm.startRequest();
-                        outstandingRequests.add((long) requestHandle);
-                        transaction.submit(() -> this.plcSubscriber.getConversationContext().sendRequest(new OpcuaAPU(createMessageRequest))
-                            .expectResponse(OpcuaAPU.class, OpcuaProtocolLogic.REQUEST_TIMEOUT)
-                            .onError((p, e) -> LOGGER.error("Unable to maintain subscription"))
-                            .check(p -> p.getMessage() instanceof OpcuaMessageResponse)
-                            .unwrap(p -> (OpcuaMessageResponse) p.getMessage())
-                            .handle(opcuaResponse -> {
-                                PublishResponse responseMessage = null;
-                                try {
-                                    responseMessage = (PublishResponse) ExtensionObjectIO.staticParse(new ReadBuffer(opcuaResponse.getMessage(), true), false).getBody();
-                                } catch (ParseException e) {
-                                    e.printStackTrace();
+                            }
+                            for (ExtensionObject notificationMessage : ((NotificationMessage) responseMessage.getNotificationMessage()).getNotificationData()) {
+                                ExtensionObjectDefinition notification = notificationMessage.getBody();
+                                if (notification instanceof DataChangeNotification) {
+                                    LOGGER.info("Found a Data Change notification");
+                                    ExtensionObjectDefinition[] items = ((DataChangeNotification) notification).getMonitoredItems();
+                                    MonitoredItemNotification[] monitoredItems = Arrays.copyOf(items, items.length, MonitoredItemNotification[].class);
+                                    onSubscriptionValue(monitoredItems);
+                                } else {
+                                    LOGGER.warn("Unsupported Notification type");
                                 }
-                                outstandingRequests.remove(((ResponseHeader) responseMessage.getResponseHeader()).getRequestHandle());
-                                outstandingAcknowledgements.add(((ResponseHeader) responseMessage.getResponseHeader()).getRequestHandle());
+                            }
 
-                                if (((NotificationMessage) responseMessage.getNotificationMessage()).getNoOfNotificationData() > 0) {
+                            // Pass the response back to the application.
 
-                                }
-                                for (ExtensionObject notificationMessage : ((NotificationMessage) responseMessage.getNotificationMessage()).getNotificationData()) {
-                                    ExtensionObjectDefinition notification = notificationMessage.getBody();
-                                    if (notification instanceof DataChangeNotification) {
-                                        LOGGER.info("Found a Data Change notification");
-                                        ExtensionObjectDefinition[] items = ((DataChangeNotification) notification).getMonitoredItems();
-                                        MonitoredItemNotification[] monitoredItems = Arrays.copyOf(items, items.length, MonitoredItemNotification[].class);
-                                        onSubscriptionValue(monitoredItems);
-                                    } else {
-                                        LOGGER.warn("Unsupported Notification type");
-                                    }
-                                }
+                        };
 
-                                // Pass the response back to the application.
+                        /* Functional Consumer example using inner class */
+                        Consumer<TimeoutException> timeout = t -> {
 
-                                // Finish the request-transaction.
-                                transaction.endRequest();
-                            }));
+                        };
+
+                        /* Functional Consumer example using inner class */
+                        BiConsumer<OpcuaAPU, Throwable> error = (message, t) -> {
+
+                        };
+
+                        outstandingRequests.add(requestHandle);
+                        channel.submit(timeout, error, consumer, buffer);
+
                     } catch (ParseException e) {
                         LOGGER.warn("Unable to serialize subscription request");
                         e.printStackTrace();

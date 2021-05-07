@@ -1,3 +1,22 @@
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
+ */
+
 package org.apache.plc4x.java.opcua.context;
 
 import io.netty.util.concurrent.CompleteFuture;
@@ -5,6 +24,8 @@ import org.apache.commons.lang3.RandomStringUtils;
 import org.apache.commons.lang3.RandomUtils;
 import org.apache.plc4x.java.api.exceptions.PlcConnectionException;
 import org.apache.plc4x.java.api.exceptions.PlcRuntimeException;
+import org.apache.plc4x.java.api.messages.PlcFieldResponse;
+import org.apache.plc4x.java.api.messages.PlcReadResponse;
 import org.apache.plc4x.java.opcua.config.OpcuaConfiguration;
 import org.apache.plc4x.java.opcua.protocol.OpcuaSubscriptionHandle;
 import org.apache.plc4x.java.opcua.readwrite.*;
@@ -17,6 +38,7 @@ import org.apache.plc4x.java.spi.context.DriverContext;
 import org.apache.plc4x.java.spi.generation.ParseException;
 import org.apache.plc4x.java.spi.generation.ReadBuffer;
 import org.apache.plc4x.java.spi.generation.WriteBuffer;
+import org.apache.plc4x.java.spi.messages.DefaultPlcReadResponse;
 import org.apache.plc4x.java.spi.transaction.RequestTransactionManager;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -28,7 +50,11 @@ import java.security.NoSuchAlgorithmException;
 import java.security.cert.CertificateEncodingException;
 import java.time.Duration;
 import java.util.Map;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.function.BiConsumer;
+import java.util.function.Consumer;
 
 public class SecureChannel {
 
@@ -97,6 +123,7 @@ public class SecureChannel {
     private RequestTransactionManager tm = new RequestTransactionManager(1);
     private NodeIdTypeDefinition authenticationToken = new NodeIdTwoByte((short) 0);
     private DriverContext driverContext;
+    ConversationContext<OpcuaAPU> context;
 
     private Boolean isConnected;
 
@@ -138,10 +165,32 @@ public class SecureChannel {
 
     }
 
+    public void submit(Consumer<TimeoutException> onTimeout, BiConsumer<OpcuaAPU, Throwable> error, Consumer<OpcuaMessageResponse> consumer, WriteBuffer buffer) {
+        int transactionId = getTransactionIdentifier();
+
+        OpcuaMessageRequest readMessageRequest = new OpcuaMessageRequest(FINAL_CHUNK,
+            channelId.get(),
+            tokenId.get(),
+            transactionId,
+            transactionId,
+            buffer.getData());
+
+        RequestTransactionManager.RequestTransaction transaction = tm.startRequest();
+
+        transaction.submit(() -> context.sendRequest(new OpcuaAPU(readMessageRequest))
+            .expectResponse(OpcuaAPU.class, REQUEST_TIMEOUT)
+            .onTimeout(onTimeout)
+            .onError(error)
+            .check(p -> p.getMessage() instanceof OpcuaMessageResponse)
+            .unwrap(p -> (OpcuaMessageResponse) p.getMessage())
+            .handle(opcuaResponse -> {consumer.accept(opcuaResponse);})
+        );
+    }
+
     public void onConnect(ConversationContext<OpcuaAPU> context) {
         // Only the TCP transport supports login.
         LOGGER.info("Opcua Driver running in ACTIVE mode.");
-
+        this.context = context;
 
         OpcuaHelloRequest hello = new OpcuaHelloRequest(FINAL_CHUNK,
             VERSION,
