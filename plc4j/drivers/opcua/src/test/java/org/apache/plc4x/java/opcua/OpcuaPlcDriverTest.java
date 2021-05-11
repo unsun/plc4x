@@ -117,8 +117,6 @@ public class OpcuaPlcDriverTest {
 
     private static ExampleServer exampleServer;
 
-
-
     @BeforeAll
     public static void setup() {
         try {

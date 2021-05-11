@@ -114,7 +114,7 @@ public class OpcuaProtocolLogic extends Plc4xProtocolBase<OpcuaAPU> implements H
     private SecureChannel channel;
 
 
-    private final AtomicLong clientHandles = new AtomicLong(1L);
+
 
     private AtomicBoolean securedConnection = new AtomicBoolean(false);
 
@@ -241,7 +241,7 @@ public class OpcuaProtocolLogic extends Plc4xProtocolBase<OpcuaAPU> implements H
                 future.completeExceptionally(t);
             };
 
-            channel.submit(timeout, error, consumer, buffer);
+            channel.submit(context, timeout, error, consumer, buffer);
 
         } catch (ParseException e) {
             LOGGER.error("Unable to serialise the ReadRequest");
@@ -770,7 +770,7 @@ public class OpcuaProtocolLogic extends Plc4xProtocolBase<OpcuaAPU> implements H
                 future.completeExceptionally(t);
             };
 
-            channel.submit(timeout, error, consumer, buffer);
+            channel.submit(context, timeout, error, consumer, buffer);
 
         } catch (ParseException e) {
             LOGGER.error("Unable to serialise the ReadRequest");
@@ -819,10 +819,9 @@ public class OpcuaProtocolLogic extends Plc4xProtocolBase<OpcuaAPU> implements H
             try {
                 CompletableFuture<CreateSubscriptionResponse> subscription = onSubscribeCreateSubscription(cycleTime);
                 CreateSubscriptionResponse response = subscription.get(SecureChannel.REQUEST_TIMEOUT_LONG, TimeUnit.MILLISECONDS);
-                //Store this somewhere safe
                 subscriptionId = response.getSubscriptionId();
 
-                subscriptions.put(subscriptionId, new OpcuaSubscriptionHandle(this, channel, subscriptionId, subscriptionRequest.getFieldNames(), cycleTime));
+                subscriptions.put(subscriptionId, new OpcuaSubscriptionHandle(context, this, channel, subscriptionRequest, subscriptionId, cycleTime));
 
             } catch (InterruptedException e) {
                 Thread.currentThread().interrupt();
@@ -833,80 +832,14 @@ public class OpcuaProtocolLogic extends Plc4xProtocolBase<OpcuaAPU> implements H
                 LOGGER.warn("Unable to subscribe Elements because of: {}", e.getMessage());
             }
 
-
             for (String fieldName : subscriptionRequest.getFieldNames()) {
                 final DefaultPlcSubscriptionField fieldDefaultPlcSubscription = (DefaultPlcSubscriptionField) subscriptionRequest.getField(fieldName);
-
                 if (!(fieldDefaultPlcSubscription.getPlcField() instanceof OpcuaField)) {
                     values.put(fieldName, new ResponseItem<>(PlcResponseCode.INVALID_ADDRESS, null));
                 } else {
                     values.put(fieldName, new ResponseItem<>(PlcResponseCode.OK, subscriptions.get(subscriptionId)));
                 }
-
-                NodeId idNode = generateNodeId((OpcuaField) fieldDefaultPlcSubscription.getPlcField());
-
-                ReadValueId readValueId = new ReadValueId(
-                    idNode,
-                    0xD,
-                    NULL_STRING,
-                    new QualifiedName(0, NULL_STRING));
-
-                MonitoringMode monitoringMode;
-                switch (fieldDefaultPlcSubscription.getPlcSubscriptionType()) {
-                    case CYCLIC:
-                        monitoringMode = MonitoringMode.monitoringModeSampling;
-                        break;
-                    case CHANGE_OF_STATE:
-                        monitoringMode = MonitoringMode.monitoringModeReporting;
-                        break;
-                    case EVENT:
-                        monitoringMode = MonitoringMode.monitoringModeReporting;
-                        break;
-                    default:
-                        monitoringMode = MonitoringMode.monitoringModeReporting;
-                }
-
-                long clientHandle = clientHandles.getAndIncrement();
-
-                MonitoringParameters parameters = new MonitoringParameters(
-                    clientHandle,
-                    (double) cycleTime,     // sampling interval
-                    NULL_EXTENSION_OBJECT,       // filter, null means use default
-                    1L,   // queue size
-                    true        // discard oldest
-                );
-
-                MonitoredItemCreateRequest request = new MonitoredItemCreateRequest(
-                    readValueId, monitoringMode, parameters);
-
-                requestList.add(request);
             }
-
-            CreateMonitoredItemsResponse monitoredItemsResponse = null;
-            try {
-                CompletableFuture<CreateMonitoredItemsResponse> monitoredItemsResponseFuture = onSubscribeCreateMonitoredItemsRequest(requestList, subscriptionId);
-                monitoredItemsResponse = monitoredItemsResponseFuture.get();
-            } catch (InterruptedException e) {
-                Thread.currentThread().interrupt();
-                LOGGER.warn("Unable to subscribe Elements because of: {}", e.getMessage());
-            } catch (ExecutionException e) {
-                LOGGER.warn("Unable to subscribe Elements because of: {}", e.getMessage());
-            }
-            subscriptions.get(subscriptionId).startSubscriber();
-            /*
-            BiConsumer<UaMonitoredItem, Integer> onItemCreated =
-                (item, id) -> item.setValueConsumer(subscriptionHandle::onSubscriptionValue);
-
-            List<UaMonitoredItem> items = subscription.createMonitoredItems(
-                TimestampsToReturn.timestampsToReturnBoth,
-                requestList,
-                onItemCreated
-            ).get();
-
-            subHandle = subscriptionHandle;
-            responseCode = PlcResponseCode.OK;
-            responseItems.put(fieldName, new ResponseItem(responseCode, subHandle));
-            */
             return new DefaultPlcSubscriptionResponse(subscriptionRequest, values);
         });
 
@@ -977,7 +910,7 @@ public class OpcuaProtocolLogic extends Plc4xProtocolBase<OpcuaAPU> implements H
                 future.completeExceptionally(t);
             };
 
-            channel.submit(timeout, error, consumer, buffer);
+            channel.submit(context, timeout, error, consumer, buffer);
 
         } catch (ParseException e) {
             LOGGER.error("Unable to serialise the ReadRequest");
@@ -986,76 +919,7 @@ public class OpcuaProtocolLogic extends Plc4xProtocolBase<OpcuaAPU> implements H
         return future;
     }
 
-    private CompletableFuture<CreateMonitoredItemsResponse> onSubscribeCreateMonitoredItemsRequest(List<MonitoredItemCreateRequest> requestList, long subscriptionId)  {
-        CompletableFuture<CreateMonitoredItemsResponse> future = new CompletableFuture<>();
 
-        RequestHeader requestHeader = new RequestHeader(channel.getAuthenticationToken(),
-            SecureChannel.getCurrentDateTime(),
-            channel.getRequestHandle(),
-            0L,
-            NULL_STRING,
-            SecureChannel.REQUEST_TIMEOUT_LONG,
-            NULL_EXTENSION_OBJECT);
-
-        CreateMonitoredItemsRequest createMonitoredItemsRequest = new CreateMonitoredItemsRequest(
-            requestHeader,
-            subscriptionId,
-            TimestampsToReturn.timestampsToReturnBoth,
-            requestList.size(),
-            requestList.toArray(new MonitoredItemCreateRequest[requestList.size()])
-        );
-
-        ExpandedNodeId expandedNodeId = new ExpandedNodeId(false,           //Namespace Uri Specified
-            false,            //Server Index Specified
-            new NodeIdFourByte((short) 0, Integer.valueOf(createMonitoredItemsRequest.getIdentifier())),
-            null,
-            null);
-
-        ExtensionObject extObject = new ExtensionObject(
-            expandedNodeId,
-            null,
-            createMonitoredItemsRequest);
-
-        try {
-            WriteBuffer buffer = new WriteBuffer(extObject.getLengthInBytes(), true);
-            ExtensionObjectIO.staticSerialize(buffer, extObject);
-
-            /* Functional Consumer example using inner class */
-            Consumer<OpcuaMessageResponse> consumer = opcuaResponse -> {
-                CreateMonitoredItemsResponse responseMessage = null;
-                try {
-                    responseMessage = (CreateMonitoredItemsResponse) ExtensionObjectIO.staticParse(new ReadBuffer(opcuaResponse.getMessage(), true), false).getBody();
-                } catch (ParseException e) {
-                    e.printStackTrace();
-                }
-
-                // Pass the response back to the application.
-                future.complete(responseMessage);
-
-            };
-
-            /* Functional Consumer example using inner class */
-            Consumer<TimeoutException> timeout = t -> {
-
-                // Pass the response back to the application.
-                future.completeExceptionally(t);
-            };
-
-            /* Functional Consumer example using inner class */
-            BiConsumer<OpcuaAPU, Throwable> error = (message, t) -> {
-
-                // Pass the response back to the application.
-                future.completeExceptionally(t);
-            };
-
-            channel.submit(timeout, error, consumer, buffer);
-
-        } catch (ParseException e) {
-            LOGGER.error("Unable to serialise the ReadRequest");
-        }
-
-        return future;
-    }
 
     @Override
     public CompletableFuture<PlcUnsubscriptionResponse> unsubscribe(PlcUnsubscriptionRequest unsubscriptionRequest) {

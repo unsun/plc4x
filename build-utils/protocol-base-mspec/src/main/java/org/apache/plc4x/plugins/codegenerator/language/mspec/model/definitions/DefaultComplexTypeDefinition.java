@@ -22,7 +22,6 @@ package org.apache.plc4x.plugins.codegenerator.language.mspec.model.definitions;
 import org.apache.plc4x.plugins.codegenerator.types.definitions.Argument;
 import org.apache.plc4x.plugins.codegenerator.types.definitions.ComplexTypeDefinition;
 import org.apache.plc4x.plugins.codegenerator.types.fields.*;
-import org.graalvm.compiler.core.common.type.ArithmeticOpTable;
 
 import java.util.Collections;
 import java.util.LinkedList;
